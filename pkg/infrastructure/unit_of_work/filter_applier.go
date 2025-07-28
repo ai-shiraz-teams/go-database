@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"go-database/pkg/domain"
+	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
+	queryparams "github.com/ai-shiraz-teams/go-database-sdk/internal/shared/query"
+	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
 
 	"gorm.io/gorm"
 )
@@ -19,7 +21,7 @@ func NewFilterApplier() *FilterApplier {
 }
 
 // ApplyFilters converts FilterCriteria from IIdentifier to GORM query conditions
-func (fa *FilterApplier) ApplyFilters(query *gorm.DB, filters []domain.FilterCriteria) *gorm.DB {
+func (fa *FilterApplier) ApplyFilters(query *gorm.DB, filters []identifier.FilterCriteria) *gorm.DB {
 	if len(filters) == 0 {
 		return query
 	}
@@ -33,7 +35,7 @@ func (fa *FilterApplier) ApplyFilters(query *gorm.DB, filters []domain.FilterCri
 		if !isFirst && i > 0 {
 			// The logical operator is stored on the previous filter
 			prevFilter := filters[i-1]
-			useOr = prevFilter.LogicalOp == domain.LogicalOperatorOr
+			useOr = prevFilter.LogicalOp == identifier.LogicalOperatorOr
 		}
 
 		query = fa.applyFilter(query, filter, isFirst, useOr)
@@ -43,7 +45,7 @@ func (fa *FilterApplier) ApplyFilters(query *gorm.DB, filters []domain.FilterCri
 }
 
 // applyFilter applies a single FilterCriteria to the GORM query
-func (fa *FilterApplier) applyFilter(query *gorm.DB, filter domain.FilterCriteria, isFirst bool, useOr bool) *gorm.DB {
+func (fa *FilterApplier) applyFilter(query *gorm.DB, filter identifier.FilterCriteria, isFirst bool, useOr bool) *gorm.DB {
 	// Handle grouped filters (nested conditions)
 	if len(filter.Group) > 0 {
 		return fa.applyGroupFilter(query, filter, isFirst, useOr)
@@ -54,7 +56,7 @@ func (fa *FilterApplier) applyFilter(query *gorm.DB, filter domain.FilterCriteri
 }
 
 // applyGroupFilter handles nested filter groups with AND/OR logic
-func (fa *FilterApplier) applyGroupFilter(query *gorm.DB, filter domain.FilterCriteria, isFirst bool, useOr bool) *gorm.DB {
+func (fa *FilterApplier) applyGroupFilter(query *gorm.DB, filter identifier.FilterCriteria, isFirst bool, useOr bool) *gorm.DB {
 	groupQuery := fa.ApplyFilters(query.Session(&gorm.Session{NewDB: true}), filter.Group)
 
 	if isFirst {
@@ -67,7 +69,7 @@ func (fa *FilterApplier) applyGroupFilter(query *gorm.DB, filter domain.FilterCr
 }
 
 // applySingleFilter applies individual filter conditions based on operator
-func (fa *FilterApplier) applySingleFilter(query *gorm.DB, filter domain.FilterCriteria, isFirst bool, useOr bool) *gorm.DB {
+func (fa *FilterApplier) applySingleFilter(query *gorm.DB, filter identifier.FilterCriteria, isFirst bool, useOr bool) *gorm.DB {
 	field := filter.Field
 	operator := filter.Operator
 	value := filter.Value
@@ -77,35 +79,35 @@ func (fa *FilterApplier) applySingleFilter(query *gorm.DB, filter domain.FilterC
 	var args []interface{}
 
 	switch operator {
-	case domain.FilterOperatorEqual:
+	case identifier.FilterOperatorEqual:
 		condition = fmt.Sprintf("%s = ?", field)
 		args = []interface{}{value}
 
-	case domain.FilterOperatorNotEqual:
+	case identifier.FilterOperatorNotEqual:
 		condition = fmt.Sprintf("%s != ?", field)
 		args = []interface{}{value}
 
-	case domain.FilterOperatorGreaterThan:
+	case identifier.FilterOperatorGreaterThan:
 		condition = fmt.Sprintf("%s > ?", field)
 		args = []interface{}{value}
 
-	case domain.FilterOperatorGreaterEqual:
+	case identifier.FilterOperatorGreaterEqual:
 		condition = fmt.Sprintf("%s >= ?", field)
 		args = []interface{}{value}
 
-	case domain.FilterOperatorLessThan:
+	case identifier.FilterOperatorLessThan:
 		condition = fmt.Sprintf("%s < ?", field)
 		args = []interface{}{value}
 
-	case domain.FilterOperatorLessEqual:
+	case identifier.FilterOperatorLessEqual:
 		condition = fmt.Sprintf("%s <= ?", field)
 		args = []interface{}{value}
 
-	case domain.FilterOperatorLike:
+	case identifier.FilterOperatorLike:
 		condition = fmt.Sprintf("%s LIKE ?", field)
 		args = []interface{}{value}
 
-	case domain.FilterOperatorIn:
+	case identifier.FilterOperatorIn:
 		if len(values) > 0 {
 			condition = fmt.Sprintf("%s IN ?", field)
 			args = []interface{}{values}
@@ -114,7 +116,7 @@ func (fa *FilterApplier) applySingleFilter(query *gorm.DB, filter domain.FilterC
 			condition = "1 = 0"
 		}
 
-	case domain.FilterOperatorNotIn:
+	case identifier.FilterOperatorNotIn:
 		if len(values) > 0 {
 			condition = fmt.Sprintf("%s NOT IN ?", field)
 			args = []interface{}{values}
@@ -123,24 +125,24 @@ func (fa *FilterApplier) applySingleFilter(query *gorm.DB, filter domain.FilterC
 			condition = "1 = 1"
 		}
 
-	case domain.FilterOperatorIsNull:
+	case identifier.FilterOperatorIsNull:
 		condition = fmt.Sprintf("%s IS NULL", field)
 
-	case domain.FilterOperatorIsNotNull:
+	case identifier.FilterOperatorIsNotNull:
 		condition = fmt.Sprintf("%s IS NOT NULL", field)
 
-	case domain.FilterOperatorBetween:
+	case identifier.FilterOperatorBetween:
 		if len(values) >= 2 {
 			condition = fmt.Sprintf("%s BETWEEN ? AND ?", field)
 			args = []interface{}{values[0], values[1]}
 		}
 
-	case domain.FilterOperatorContains:
+	case identifier.FilterOperatorContains:
 		// For JSON fields - PostgreSQL specific
 		condition = fmt.Sprintf("%s @> ?", field)
 		args = []interface{}{value}
 
-	case domain.FilterOperatorHas:
+	case identifier.FilterOperatorHas:
 		// For JSON fields - PostgreSQL specific
 		condition = fmt.Sprintf("%s ? ?", field)
 		args = []interface{}{value}
@@ -175,7 +177,7 @@ func (fa *FilterApplier) ApplyQueryParams(query *gorm.DB, params interface{}) *g
 
 	// Extract filters
 	if filtersField := val.FieldByName("Filters"); filtersField.IsValid() {
-		if filters, ok := filtersField.Interface().([]domain.FilterCriteria); ok && len(filters) > 0 {
+		if filters, ok := filtersField.Interface().([]identifier.FilterCriteria); ok && len(filters) > 0 {
 			query = fa.ApplyFilters(query, filters)
 		}
 	}
@@ -207,7 +209,7 @@ func (fa *FilterApplier) ApplyQueryParams(query *gorm.DB, params interface{}) *g
 
 	// Extract sorting
 	if sortField := val.FieldByName("Sort"); sortField.IsValid() {
-		if sorts, ok := sortField.Interface().([]domain.SortField); ok && len(sorts) > 0 {
+		if sorts, ok := sortField.Interface().([]queryparams.SortField); ok && len(sorts) > 0 {
 			for _, sort := range sorts {
 				query = query.Order(fmt.Sprintf("%s %s", sort.Field, sort.Order))
 			}
@@ -229,7 +231,7 @@ func (fa *FilterApplier) ApplyQueryParams(query *gorm.DB, params interface{}) *g
 }
 
 // ApplyIdentifier converts IIdentifier to GORM query conditions
-func (fa *FilterApplier) ApplyIdentifier(query *gorm.DB, identifier domain.IIdentifier) *gorm.DB {
+func (fa *FilterApplier) ApplyIdentifier(query *gorm.DB, identifier identifier.IIdentifier) *gorm.DB {
 	if identifier == nil {
 		return query
 	}
@@ -239,7 +241,7 @@ func (fa *FilterApplier) ApplyIdentifier(query *gorm.DB, identifier domain.IIden
 }
 
 // BuildQueryFromIdentifier creates a complete query from an IIdentifier
-func BuildQueryFromIdentifier[T domain.IBaseModel](db *gorm.DB, identifier domain.IIdentifier) *gorm.DB {
+func BuildQueryFromIdentifier[T types.IBaseModel](db *gorm.DB, identifier identifier.IIdentifier) *gorm.DB {
 	query := db.Model(new(T))
 	fa := NewFilterApplier()
 	return fa.ApplyIdentifier(query, identifier)

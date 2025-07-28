@@ -1,4 +1,4 @@
-package domain
+package identifier
 
 import "sync"
 
@@ -22,11 +22,12 @@ func (ib *IdentifierBuilder) clone() *IdentifierBuilder {
 	ib.mutex.RLock()
 	defer ib.mutex.RUnlock()
 
-	newBuilder := &IdentifierBuilder{
-		criteria: make([]FilterCriteria, len(ib.criteria)),
+	newCriteria := make([]FilterCriteria, len(ib.criteria))
+	copy(newCriteria, ib.criteria)
+
+	return &IdentifierBuilder{
+		criteria: newCriteria,
 	}
-	copy(newBuilder.criteria, ib.criteria)
-	return newBuilder
 }
 
 // addCriteria adds a new filter criteria and returns a new builder instance
@@ -91,11 +92,11 @@ func (ib *IdentifierBuilder) LessOrEqual(field string, value interface{}) IIdent
 }
 
 // Like adds a pattern matching filter condition (SQL LIKE operator)
-func (ib *IdentifierBuilder) Like(field string, value string) IIdentifier {
+func (ib *IdentifierBuilder) Like(field string, pattern string) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
 		Operator: FilterOperatorLike,
-		Value:    value,
+		Value:    pattern,
 	})
 }
 
@@ -160,52 +161,42 @@ func (ib *IdentifierBuilder) Has(field string) IIdentifier {
 }
 
 // And combines the current builder with another identifier using AND logic
-func (ib *IdentifierBuilder) And(identifier IIdentifier) IIdentifier {
-	if identifier == nil {
-		return ib
-	}
-
-	otherCriteria := identifier.ToFilterCriteria()
-	if len(otherCriteria) == 0 {
+func (ib *IdentifierBuilder) And(other IIdentifier) IIdentifier {
+	if other == nil {
 		return ib
 	}
 
 	newBuilder := ib.clone()
+	otherCriteria := other.ToFilterCriteria()
 
-	// If we have existing criteria, mark the last one as AND
-	if len(newBuilder.criteria) > 0 {
-		lastIndex := len(newBuilder.criteria) - 1
-		newBuilder.criteria[lastIndex].LogicalOp = LogicalOperatorAnd
+	if len(otherCriteria) > 0 && len(newBuilder.criteria) > 0 {
+		// Set the logical operator of the last criteria to AND
+		if len(newBuilder.criteria) > 0 {
+			newBuilder.criteria[len(newBuilder.criteria)-1].LogicalOp = LogicalOperatorAnd
+		}
 	}
 
-	// Add the other criteria
 	newBuilder.criteria = append(newBuilder.criteria, otherCriteria...)
-
 	return newBuilder
 }
 
 // Or combines the current builder with another identifier using OR logic
-func (ib *IdentifierBuilder) Or(identifier IIdentifier) IIdentifier {
-	if identifier == nil {
-		return ib
-	}
-
-	otherCriteria := identifier.ToFilterCriteria()
-	if len(otherCriteria) == 0 {
+func (ib *IdentifierBuilder) Or(other IIdentifier) IIdentifier {
+	if other == nil {
 		return ib
 	}
 
 	newBuilder := ib.clone()
+	otherCriteria := other.ToFilterCriteria()
 
-	// If we have existing criteria, mark the last one as OR
-	if len(newBuilder.criteria) > 0 {
-		lastIndex := len(newBuilder.criteria) - 1
-		newBuilder.criteria[lastIndex].LogicalOp = LogicalOperatorOr
+	if len(otherCriteria) > 0 && len(newBuilder.criteria) > 0 {
+		// Set the logical operator of the last criteria to OR
+		if len(newBuilder.criteria) > 0 {
+			newBuilder.criteria[len(newBuilder.criteria)-1].LogicalOp = LogicalOperatorOr
+		}
 	}
 
-	// Add the other criteria
 	newBuilder.criteria = append(newBuilder.criteria, otherCriteria...)
-
 	return newBuilder
 }
 
@@ -218,7 +209,6 @@ func (ib *IdentifierBuilder) ToFilterCriteria() []FilterCriteria {
 		return nil
 	}
 
-	// Create a deep copy to prevent external modification
 	result := make([]FilterCriteria, len(ib.criteria))
 	copy(result, ib.criteria)
 	return result
@@ -226,9 +216,7 @@ func (ib *IdentifierBuilder) ToFilterCriteria() []FilterCriteria {
 
 // Reset clears all filter criteria and returns a fresh builder
 func (ib *IdentifierBuilder) Reset() IIdentifier {
-	return &IdentifierBuilder{
-		criteria: make([]FilterCriteria, 0),
-	}
+	return NewIdentifier()
 }
 
 // Compile-time check to ensure IdentifierBuilder implements IIdentifier

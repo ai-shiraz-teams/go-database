@@ -1,6 +1,10 @@
-package domain
+package types
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // BaseEntity provides common fields that should be embedded in all domain entities.
 // It follows clean architecture principles and is designed for SDK-level reusability.
@@ -16,34 +20,12 @@ type BaseEntity struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 
 	// DeletedAt enables soft delete functionality (GORM will automatically handle this)
-	// The gorm:"index" tag optimizes queries filtering soft-deleted records
-	DeletedAt *time.Time `gorm:"index" json:"deletedAt,omitempty"`
+	// Using gorm.DeletedAt ensures proper GORM soft delete behavior
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
 
 	// Version field for optimistic locking support
 	// Default value of 1 ensures proper version tracking from entity creation
 	Version int `gorm:"default:1" json:"version"`
-}
-
-// IBaseModel defines the contract that all entities with BaseEntity must satisfy.
-// This interface enables generic repository patterns and type-safe operations.
-type IBaseModel interface {
-	// GetID returns the entity's unique identifier
-	GetID() int
-
-	// GetCreatedAt returns when the entity was created
-	GetCreatedAt() time.Time
-
-	// GetUpdatedAt returns when the entity was last updated
-	GetUpdatedAt() time.Time
-
-	// GetDeletedAt returns the soft deletion timestamp, nil if not deleted
-	GetDeletedAt() *time.Time
-
-	// GetVersion returns the current version for optimistic locking
-	GetVersion() int
-
-	// SetVersion updates the version field (used by repositories for optimistic locking)
-	SetVersion(version int)
 }
 
 // GetID returns the entity's unique identifier
@@ -63,7 +45,10 @@ func (b *BaseEntity) GetUpdatedAt() time.Time {
 
 // GetDeletedAt returns the soft deletion timestamp, nil if not deleted
 func (b *BaseEntity) GetDeletedAt() *time.Time {
-	return b.DeletedAt
+	if b.DeletedAt.Valid {
+		return &b.DeletedAt.Time
+	}
+	return nil
 }
 
 // GetVersion returns the current version for optimistic locking

@@ -1,6 +1,6 @@
-module go-database
+module github.com/ai-shiraz-teams/go-database-sdk
 
-go 1.24.0
+go 1.24
 
 require (
 	gorm.io/driver/sqlite v1.5.4

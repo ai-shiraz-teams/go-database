@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"go-database/pkg/domain"
+	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/query"
+	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/unit_of_work"
 
 	"gorm.io/gorm"
 )
@@ -12,14 +15,14 @@ import (
 // PostgresUnitOfWork provides a GORM-based implementation of IUnitOfWork for PostgreSQL.
 // It operates directly on GORM database connections and maintains transaction safety
 // across all operations without any repository dependencies.
-type PostgresUnitOfWork[T domain.IBaseModel] struct {
+type PostgresUnitOfWork[T types.IBaseModel] struct {
 	db            *gorm.DB
 	filterApplier *FilterApplier
 	tx            *gorm.DB // Current transaction, nil if not in transaction
 }
 
 // NewPostgresUnitOfWork creates a new PostgreSQL UnitOfWork instance
-func NewPostgresUnitOfWork[T domain.IBaseModel](db *gorm.DB) domain.IUnitOfWork[T] {
+func NewPostgresUnitOfWork[T types.IBaseModel](db *gorm.DB) unit_of_work.IUnitOfWork[T] {
 	return &PostgresUnitOfWork[T]{
 		db:            db,
 		filterApplier: NewFilterApplier(),
@@ -83,7 +86,7 @@ func (uow *PostgresUnitOfWork[T]) FindAll(ctx context.Context) ([]T, error) {
 }
 
 // FindAllWithPagination retrieves entities with pagination support and returns total count
-func (uow *PostgresUnitOfWork[T]) FindAllWithPagination(ctx context.Context, query *domain.QueryParams[T]) ([]T, uint, error) {
+func (uow *PostgresUnitOfWork[T]) FindAllWithPagination(ctx context.Context, query *query.QueryParams[T]) ([]T, uint, error) {
 	db := uow.getDB()
 
 	// Start with base query
@@ -138,7 +141,7 @@ func (uow *PostgresUnitOfWork[T]) FindOneById(ctx context.Context, id uint) (T, 
 }
 
 // FindOneByIdentifier retrieves a single entity using the IIdentifier filter system
-func (uow *PostgresUnitOfWork[T]) FindOneByIdentifier(ctx context.Context, identifier domain.IIdentifier) (T, error) {
+func (uow *PostgresUnitOfWork[T]) FindOneByIdentifier(ctx context.Context, identifier identifier.IIdentifier) (T, error) {
 	var entity T
 	db := uow.getDB()
 	query := BuildQueryFromIdentifier[T](db, identifier)
@@ -162,7 +165,7 @@ func (uow *PostgresUnitOfWork[T]) Insert(ctx context.Context, entity T) (T, erro
 }
 
 // Update modifies entities matching the identifier with the provided entity data
-func (uow *PostgresUnitOfWork[T]) Update(ctx context.Context, identifier domain.IIdentifier, entity T) (T, error) {
+func (uow *PostgresUnitOfWork[T]) Update(ctx context.Context, identifier identifier.IIdentifier, entity T) (T, error) {
 	// First verify the entity exists
 	_, err := uow.FindOneByIdentifier(ctx, identifier)
 	if err != nil {
@@ -180,7 +183,7 @@ func (uow *PostgresUnitOfWork[T]) Update(ctx context.Context, identifier domain.
 }
 
 // Delete performs a logical operation (soft-delete by default)
-func (uow *PostgresUnitOfWork[T]) Delete(ctx context.Context, identifier domain.IIdentifier) error {
+func (uow *PostgresUnitOfWork[T]) Delete(ctx context.Context, identifier identifier.IIdentifier) error {
 	db := uow.getDB()
 	query := BuildQueryFromIdentifier[T](db, identifier)
 	return query.WithContext(ctx).Delete(new(T)).Error
@@ -189,7 +192,7 @@ func (uow *PostgresUnitOfWork[T]) Delete(ctx context.Context, identifier domain.
 // Soft-delete lifecycle management
 
 // SoftDelete performs soft deletion by setting DeletedAt timestamp
-func (uow *PostgresUnitOfWork[T]) SoftDelete(ctx context.Context, identifier domain.IIdentifier) (T, error) {
+func (uow *PostgresUnitOfWork[T]) SoftDelete(ctx context.Context, identifier identifier.IIdentifier) (T, error) {
 	// First find the entity
 	entity, err := uow.FindOneByIdentifier(ctx, identifier)
 	if err != nil {
@@ -209,7 +212,7 @@ func (uow *PostgresUnitOfWork[T]) SoftDelete(ctx context.Context, identifier dom
 }
 
 // HardDelete permanently removes entities from the database
-func (uow *PostgresUnitOfWork[T]) HardDelete(ctx context.Context, identifier domain.IIdentifier) (T, error) {
+func (uow *PostgresUnitOfWork[T]) HardDelete(ctx context.Context, identifier identifier.IIdentifier) (T, error) {
 	// First find the entity (including soft-deleted ones)
 	db := uow.getDB()
 	query := BuildQueryFromIdentifier[T](db, identifier).Unscoped()
@@ -239,17 +242,17 @@ func (uow *PostgresUnitOfWork[T]) GetTrashed(ctx context.Context) ([]T, error) {
 }
 
 // GetTrashedWithPagination retrieves soft-deleted entities with pagination
-func (uow *PostgresUnitOfWork[T]) GetTrashedWithPagination(ctx context.Context, query *domain.QueryParams[T]) ([]T, uint, error) {
+func (uow *PostgresUnitOfWork[T]) GetTrashedWithPagination(ctx context.Context, params *query.QueryParams[T]) ([]T, uint, error) {
 	// Force only deleted records
-	if query == nil {
-		query = domain.NewQueryParams[T]()
+	if params == nil {
+		params = query.NewQueryParams[T]()
 	}
-	query.OnlyDeleted = true
-	return uow.FindAllWithPagination(ctx, query)
+	params.OnlyDeleted = true
+	return uow.FindAllWithPagination(ctx, params)
 }
 
 // Restore recovers soft-deleted entities by clearing their DeletedAt timestamp
-func (uow *PostgresUnitOfWork[T]) Restore(ctx context.Context, identifier domain.IIdentifier) (T, error) {
+func (uow *PostgresUnitOfWork[T]) Restore(ctx context.Context, identifier identifier.IIdentifier) (T, error) {
 	db := uow.getDB()
 	query := BuildQueryFromIdentifier[T](db, identifier).Unscoped()
 
@@ -319,7 +322,7 @@ func (uow *PostgresUnitOfWork[T]) BulkUpdate(ctx context.Context, entities []T) 
 }
 
 // BulkSoftDelete soft-deletes multiple entities identified by the provided identifiers
-func (uow *PostgresUnitOfWork[T]) BulkSoftDelete(ctx context.Context, identifiers []domain.IIdentifier) error {
+func (uow *PostgresUnitOfWork[T]) BulkSoftDelete(ctx context.Context, identifiers []identifier.IIdentifier) error {
 	if len(identifiers) == 0 {
 		return nil
 	}
@@ -337,7 +340,7 @@ func (uow *PostgresUnitOfWork[T]) BulkSoftDelete(ctx context.Context, identifier
 }
 
 // BulkHardDelete permanently removes multiple entities identified by the provided identifiers
-func (uow *PostgresUnitOfWork[T]) BulkHardDelete(ctx context.Context, identifiers []domain.IIdentifier) error {
+func (uow *PostgresUnitOfWork[T]) BulkHardDelete(ctx context.Context, identifiers []identifier.IIdentifier) error {
 	if len(identifiers) == 0 {
 		return nil
 	}
@@ -357,7 +360,7 @@ func (uow *PostgresUnitOfWork[T]) BulkHardDelete(ctx context.Context, identifier
 // Utility operations
 
 // ResolveIDByUniqueField finds the ID of an entity by searching a unique field
-func (uow *PostgresUnitOfWork[T]) ResolveIDByUniqueField(ctx context.Context, model domain.IBaseModel, field string, value interface{}) (uint, error) {
+func (uow *PostgresUnitOfWork[T]) ResolveIDByUniqueField(ctx context.Context, model types.IBaseModel, field string, value interface{}) (uint, error) {
 	var entity T
 	db := uow.getDB()
 
@@ -369,7 +372,7 @@ func (uow *PostgresUnitOfWork[T]) ResolveIDByUniqueField(ctx context.Context, mo
 }
 
 // Count returns the total number of entities matching the query parameters
-func (uow *PostgresUnitOfWork[T]) Count(ctx context.Context, query *domain.QueryParams[T]) (int64, error) {
+func (uow *PostgresUnitOfWork[T]) Count(ctx context.Context, query *query.QueryParams[T]) (int64, error) {
 	db := uow.getDB()
 	baseQuery := db.Model(new(T))
 	filteredQuery := uow.filterApplier.ApplyQueryParams(baseQuery, query)
@@ -382,7 +385,7 @@ func (uow *PostgresUnitOfWork[T]) Count(ctx context.Context, query *domain.Query
 }
 
 // Exists checks if any entity matches the provided identifier
-func (uow *PostgresUnitOfWork[T]) Exists(ctx context.Context, identifier domain.IIdentifier) (bool, error) {
+func (uow *PostgresUnitOfWork[T]) Exists(ctx context.Context, identifier identifier.IIdentifier) (bool, error) {
 	db := uow.getDB()
 	query := BuildQueryFromIdentifier[T](db, identifier)
 
@@ -392,6 +395,3 @@ func (uow *PostgresUnitOfWork[T]) Exists(ctx context.Context, identifier domain.
 	}
 	return count > 0, nil
 }
-
-// Compile-time check to ensure PostgresUnitOfWork implements IUnitOfWork
-var _ domain.IUnitOfWork[*domain.User] = (*PostgresUnitOfWork[*domain.User])(nil)
