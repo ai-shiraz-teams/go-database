@@ -5,17 +5,15 @@ import (
 	"fmt"
 
 	"go-database/pkg/domain"
-	"go-database/pkg/infrastructure/repository"
 
 	"gorm.io/gorm"
 )
 
 // PostgresUnitOfWork provides a GORM-based implementation of IUnitOfWork for PostgreSQL.
-// It uses composition with BaseRepository to handle database operations and maintains
-// transaction safety across all operations.
+// It operates directly on GORM database connections and maintains transaction safety
+// across all operations without any repository dependencies.
 type PostgresUnitOfWork[T domain.IBaseModel] struct {
 	db            *gorm.DB
-	baseRepo      repository.IBaseRepository[T]
 	filterApplier *FilterApplier
 	tx            *gorm.DB // Current transaction, nil if not in transaction
 }
@@ -24,7 +22,6 @@ type PostgresUnitOfWork[T domain.IBaseModel] struct {
 func NewPostgresUnitOfWork[T domain.IBaseModel](db *gorm.DB) domain.IUnitOfWork[T] {
 	return &PostgresUnitOfWork[T]{
 		db:            db,
-		baseRepo:      repository.NewBaseRepository[T](db),
 		filterApplier: NewFilterApplier(),
 	}
 }
@@ -35,15 +32,6 @@ func (uow *PostgresUnitOfWork[T]) getDB() *gorm.DB {
 		return uow.tx
 	}
 	return uow.db
-}
-
-// getRepo returns a repository instance using the current database connection
-func (uow *PostgresUnitOfWork[T]) getRepo() repository.IBaseRepository[T] {
-	currentDB := uow.getDB()
-	if currentDB != uow.db {
-		return uow.baseRepo.WithTransaction(currentDB)
-	}
-	return uow.baseRepo
 }
 
 // Transaction management
@@ -86,17 +74,20 @@ func (uow *PostgresUnitOfWork[T]) RollbackTransaction(ctx context.Context) {
 
 // FindAll retrieves all entities (excluding soft-deleted by default)
 func (uow *PostgresUnitOfWork[T]) FindAll(ctx context.Context) ([]T, error) {
-	repo := uow.getRepo()
-	query := repo.GetDB().Model(new(T))
-	return repo.FindAll(ctx, query)
+	var entities []T
+	db := uow.getDB()
+	if err := db.WithContext(ctx).Find(&entities).Error; err != nil {
+		return nil, err
+	}
+	return entities, nil
 }
 
 // FindAllWithPagination retrieves entities with pagination support and returns total count
 func (uow *PostgresUnitOfWork[T]) FindAllWithPagination(ctx context.Context, query *domain.QueryParams[T]) ([]T, uint, error) {
-	repo := uow.getRepo()
+	db := uow.getDB()
 
 	// Start with base query
-	baseQuery := repo.GetDB().Model(new(T))
+	baseQuery := db.Model(new(T))
 
 	// Apply QueryParams filters, sorting, etc.
 	filteredQuery := uow.filterApplier.ApplyQueryParams(baseQuery, query)
@@ -108,43 +99,70 @@ func (uow *PostgresUnitOfWork[T]) FindAllWithPagination(ctx context.Context, que
 		limit = 50 // Default limit
 	}
 
-	// Execute paginated query
-	entities, total, err := repo.FindWithPagination(ctx, filteredQuery, offset, limit)
-	return entities, uint(total), err
+	// Count total records first
+	var total int64
+	countQuery := filteredQuery.Session(&gorm.Session{NewDB: true})
+	if err := countQuery.WithContext(ctx).Model(new(T)).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results
+	var entities []T
+	if err := filteredQuery.WithContext(ctx).Offset(offset).Limit(limit).Find(&entities).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return entities, uint(total), nil
 }
 
 // FindOne retrieves a single entity matching the provided filter
 func (uow *PostgresUnitOfWork[T]) FindOne(ctx context.Context, filter T) (T, error) {
-	repo := uow.getRepo()
-	query := repo.GetDB().Model(new(T)).Where(filter)
-	return repo.FindOne(ctx, query)
+	var entity T
+	db := uow.getDB()
+	if err := db.WithContext(ctx).Where(filter).First(&entity).Error; err != nil {
+		var zero T
+		return zero, err
+	}
+	return entity, nil
 }
 
 // FindOneById retrieves a single entity by its ID
 func (uow *PostgresUnitOfWork[T]) FindOneById(ctx context.Context, id uint) (T, error) {
-	repo := uow.getRepo()
-	return repo.FindByID(ctx, id)
+	var entity T
+	db := uow.getDB()
+	if err := db.WithContext(ctx).First(&entity, id).Error; err != nil {
+		var zero T
+		return zero, err
+	}
+	return entity, nil
 }
 
 // FindOneByIdentifier retrieves a single entity using the IIdentifier filter system
 func (uow *PostgresUnitOfWork[T]) FindOneByIdentifier(ctx context.Context, identifier domain.IIdentifier) (T, error) {
-	repo := uow.getRepo()
-	query := BuildQueryFromIdentifier[T](repo.GetDB(), identifier)
-	return repo.FindOne(ctx, query)
+	var entity T
+	db := uow.getDB()
+	query := BuildQueryFromIdentifier[T](db, identifier)
+	if err := query.WithContext(ctx).First(&entity).Error; err != nil {
+		var zero T
+		return zero, err
+	}
+	return entity, nil
 }
 
 // Mutation operations
 
 // Insert creates a new entity and returns the created entity with populated fields
 func (uow *PostgresUnitOfWork[T]) Insert(ctx context.Context, entity T) (T, error) {
-	repo := uow.getRepo()
-	return repo.Create(ctx, entity)
+	db := uow.getDB()
+	if err := db.WithContext(ctx).Create(entity).Error; err != nil {
+		var zero T
+		return zero, err
+	}
+	return entity, nil
 }
 
 // Update modifies entities matching the identifier with the provided entity data
 func (uow *PostgresUnitOfWork[T]) Update(ctx context.Context, identifier domain.IIdentifier, entity T) (T, error) {
-	repo := uow.getRepo()
-
 	// First verify the entity exists
 	_, err := uow.FindOneByIdentifier(ctx, identifier)
 	if err != nil {
@@ -153,14 +171,19 @@ func (uow *PostgresUnitOfWork[T]) Update(ctx context.Context, identifier domain.
 	}
 
 	// Update the entity (this preserves the ID and other fields)
-	return repo.Update(ctx, entity)
+	db := uow.getDB()
+	if err := db.WithContext(ctx).Save(entity).Error; err != nil {
+		var zero T
+		return zero, err
+	}
+	return entity, nil
 }
 
 // Delete performs a logical operation (soft-delete by default)
 func (uow *PostgresUnitOfWork[T]) Delete(ctx context.Context, identifier domain.IIdentifier) error {
-	repo := uow.getRepo()
-	query := BuildQueryFromIdentifier[T](repo.GetDB(), identifier)
-	return repo.Delete(ctx, query)
+	db := uow.getDB()
+	query := BuildQueryFromIdentifier[T](db, identifier)
+	return query.WithContext(ctx).Delete(new(T)).Error
 }
 
 // Soft-delete lifecycle management
@@ -175,9 +198,9 @@ func (uow *PostgresUnitOfWork[T]) SoftDelete(ctx context.Context, identifier dom
 	}
 
 	// Perform soft delete
-	repo := uow.getRepo()
-	query := BuildQueryFromIdentifier[T](repo.GetDB(), identifier)
-	if err := repo.Delete(ctx, query); err != nil {
+	db := uow.getDB()
+	query := BuildQueryFromIdentifier[T](db, identifier)
+	if err := query.WithContext(ctx).Delete(new(T)).Error; err != nil {
 		var zero T
 		return zero, err
 	}
@@ -188,16 +211,16 @@ func (uow *PostgresUnitOfWork[T]) SoftDelete(ctx context.Context, identifier dom
 // HardDelete permanently removes entities from the database
 func (uow *PostgresUnitOfWork[T]) HardDelete(ctx context.Context, identifier domain.IIdentifier) (T, error) {
 	// First find the entity (including soft-deleted ones)
-	repo := uow.getRepo()
-	query := BuildQueryFromIdentifier[T](repo.GetDB(), identifier).Unscoped()
-	entity, err := repo.FindOne(ctx, query)
-	if err != nil {
+	db := uow.getDB()
+	query := BuildQueryFromIdentifier[T](db, identifier).Unscoped()
+	var entity T
+	if err := query.WithContext(ctx).First(&entity).Error; err != nil {
 		var zero T
 		return zero, err
 	}
 
 	// Perform hard delete
-	if err := repo.HardDelete(ctx, query); err != nil {
+	if err := query.WithContext(ctx).Delete(new(T)).Error; err != nil {
 		var zero T
 		return zero, err
 	}
@@ -207,9 +230,12 @@ func (uow *PostgresUnitOfWork[T]) HardDelete(ctx context.Context, identifier dom
 
 // GetTrashed retrieves all soft-deleted entities
 func (uow *PostgresUnitOfWork[T]) GetTrashed(ctx context.Context) ([]T, error) {
-	repo := uow.getRepo()
-	query := repo.GetDB().Model(new(T)).Unscoped().Where("deleted_at IS NOT NULL")
-	return repo.FindAll(ctx, query)
+	db := uow.getDB()
+	var entities []T
+	if err := db.WithContext(ctx).Unscoped().Where("deleted_at IS NOT NULL").Find(&entities).Error; err != nil {
+		return nil, err
+	}
+	return entities, nil
 }
 
 // GetTrashedWithPagination retrieves soft-deleted entities with pagination
@@ -224,31 +250,36 @@ func (uow *PostgresUnitOfWork[T]) GetTrashedWithPagination(ctx context.Context, 
 
 // Restore recovers soft-deleted entities by clearing their DeletedAt timestamp
 func (uow *PostgresUnitOfWork[T]) Restore(ctx context.Context, identifier domain.IIdentifier) (T, error) {
-	repo := uow.getRepo()
-	query := BuildQueryFromIdentifier[T](repo.GetDB(), identifier).Unscoped()
+	db := uow.getDB()
+	query := BuildQueryFromIdentifier[T](db, identifier).Unscoped()
 
 	// First find the soft-deleted entity
-	entity, err := repo.FindOne(ctx, query.Where("deleted_at IS NOT NULL"))
-	if err != nil {
+	var entity T
+	if err := query.WithContext(ctx).Where("deleted_at IS NOT NULL").First(&entity).Error; err != nil {
 		var zero T
 		return zero, err
 	}
 
-	// Restore the entity
-	if err := repo.Restore(ctx, query); err != nil {
+	// Restore the entity by setting deleted_at to NULL
+	if err := query.WithContext(ctx).Update("deleted_at", nil).Error; err != nil {
 		var zero T
 		return zero, err
 	}
 
-	// Return the restored entity
-	return repo.FindByID(ctx, uint(entity.GetID()))
+	// Return the restored entity by finding it again
+	var restoredEntity T
+	if err := db.WithContext(ctx).First(&restoredEntity, uint(entity.GetID())).Error; err != nil {
+		var zero T
+		return zero, err
+	}
+
+	return restoredEntity, nil
 }
 
 // RestoreAll recovers all soft-deleted entities of type T
 func (uow *PostgresUnitOfWork[T]) RestoreAll(ctx context.Context) error {
-	repo := uow.getRepo()
-	query := repo.GetDB().Model(new(T)).Unscoped().Where("deleted_at IS NOT NULL")
-	return repo.Restore(ctx, query)
+	db := uow.getDB()
+	return db.WithContext(ctx).Model(new(T)).Unscoped().Where("deleted_at IS NOT NULL").Update("deleted_at", nil).Error
 }
 
 // Bulk operations
@@ -293,11 +324,11 @@ func (uow *PostgresUnitOfWork[T]) BulkSoftDelete(ctx context.Context, identifier
 		return nil
 	}
 
-	repo := uow.getRepo()
+	db := uow.getDB()
 
 	for _, identifier := range identifiers {
-		query := BuildQueryFromIdentifier[T](repo.GetDB(), identifier)
-		if err := repo.Delete(ctx, query); err != nil {
+		query := BuildQueryFromIdentifier[T](db, identifier)
+		if err := query.WithContext(ctx).Delete(new(T)).Error; err != nil {
 			return err
 		}
 	}
@@ -311,11 +342,11 @@ func (uow *PostgresUnitOfWork[T]) BulkHardDelete(ctx context.Context, identifier
 		return nil
 	}
 
-	repo := uow.getRepo()
+	db := uow.getDB()
 
 	for _, identifier := range identifiers {
-		query := BuildQueryFromIdentifier[T](repo.GetDB(), identifier)
-		if err := repo.HardDelete(ctx, query); err != nil {
+		query := BuildQueryFromIdentifier[T](db, identifier).Unscoped()
+		if err := query.WithContext(ctx).Delete(new(T)).Error; err != nil {
 			return err
 		}
 	}
@@ -339,17 +370,27 @@ func (uow *PostgresUnitOfWork[T]) ResolveIDByUniqueField(ctx context.Context, mo
 
 // Count returns the total number of entities matching the query parameters
 func (uow *PostgresUnitOfWork[T]) Count(ctx context.Context, query *domain.QueryParams[T]) (int64, error) {
-	repo := uow.getRepo()
-	baseQuery := repo.GetDB().Model(new(T))
+	db := uow.getDB()
+	baseQuery := db.Model(new(T))
 	filteredQuery := uow.filterApplier.ApplyQueryParams(baseQuery, query)
-	return repo.Count(ctx, filteredQuery)
+
+	var count int64
+	if err := filteredQuery.WithContext(ctx).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // Exists checks if any entity matches the provided identifier
 func (uow *PostgresUnitOfWork[T]) Exists(ctx context.Context, identifier domain.IIdentifier) (bool, error) {
-	repo := uow.getRepo()
-	query := BuildQueryFromIdentifier[T](repo.GetDB(), identifier)
-	return repo.Exists(ctx, query)
+	db := uow.getDB()
+	query := BuildQueryFromIdentifier[T](db, identifier)
+
+	var count int64
+	if err := query.WithContext(ctx).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // Compile-time check to ensure PostgresUnitOfWork implements IUnitOfWork
