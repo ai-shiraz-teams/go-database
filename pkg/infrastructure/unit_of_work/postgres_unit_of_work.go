@@ -86,7 +86,7 @@ func (uow *PostgresUnitOfWork[T]) FindAll(ctx context.Context) ([]T, error) {
 }
 
 // FindAllWithPagination retrieves entities with pagination support and returns total count
-func (uow *PostgresUnitOfWork[T]) FindAllWithPagination(ctx context.Context, query *query.QueryParams[T]) ([]T, uint, error) {
+func (uow *PostgresUnitOfWork[T]) FindAllWithPagination(ctx context.Context, query *query.QueryParams[T]) ([]T, int64, error) {
 	db := uow.getDB()
 
 	// Start with base query
@@ -115,7 +115,7 @@ func (uow *PostgresUnitOfWork[T]) FindAllWithPagination(ctx context.Context, que
 		return nil, 0, err
 	}
 
-	return entities, uint(total), nil
+	return entities, total, nil
 }
 
 // FindOne retrieves a single entity matching the provided filter
@@ -130,7 +130,7 @@ func (uow *PostgresUnitOfWork[T]) FindOne(ctx context.Context, filter T) (T, err
 }
 
 // FindOneById retrieves a single entity by its ID
-func (uow *PostgresUnitOfWork[T]) FindOneById(ctx context.Context, id uint) (T, error) {
+func (uow *PostgresUnitOfWork[T]) FindOneById(ctx context.Context, id int) (T, error) {
 	var entity T
 	db := uow.getDB()
 	if err := db.WithContext(ctx).First(&entity, id).Error; err != nil {
@@ -242,7 +242,7 @@ func (uow *PostgresUnitOfWork[T]) GetTrashed(ctx context.Context) ([]T, error) {
 }
 
 // GetTrashedWithPagination retrieves soft-deleted entities with pagination
-func (uow *PostgresUnitOfWork[T]) GetTrashedWithPagination(ctx context.Context, params *query.QueryParams[T]) ([]T, uint, error) {
+func (uow *PostgresUnitOfWork[T]) GetTrashedWithPagination(ctx context.Context, params *query.QueryParams[T]) ([]T, int64, error) {
 	// Force only deleted records
 	if params == nil {
 		params = query.NewQueryParams[T]()
@@ -360,7 +360,7 @@ func (uow *PostgresUnitOfWork[T]) BulkHardDelete(ctx context.Context, identifier
 // Utility operations
 
 // ResolveIDByUniqueField finds the ID of an entity by searching a unique field
-func (uow *PostgresUnitOfWork[T]) ResolveIDByUniqueField(ctx context.Context, model types.IBaseModel, field string, value interface{}) (uint, error) {
+func (uow *PostgresUnitOfWork[T]) ResolveIDByUniqueField(ctx context.Context, model types.IBaseModel, field string, value interface{}) (int, error) {
 	var entity T
 	db := uow.getDB()
 
@@ -368,7 +368,7 @@ func (uow *PostgresUnitOfWork[T]) ResolveIDByUniqueField(ctx context.Context, mo
 		return 0, err
 	}
 
-	return uint(entity.GetID()), nil
+	return entity.GetID(), nil
 }
 
 // Count returns the total number of entities matching the query parameters
