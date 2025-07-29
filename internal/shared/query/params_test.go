@@ -3,18 +3,13 @@ package query
 import (
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database-sdk/pkg/testutil"
 )
-
-// MockEntity implements IBaseModel for testing
-type MockEntity struct {
-	types.BaseEntity
-}
 
 // TestNewQueryParams validates QueryParams creation with defaults
 func TestNewQueryParams(t *testing.T) {
 	// Arrange & Act
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 
 	// Assert
 	if params == nil {
@@ -70,7 +65,7 @@ func TestNewQueryParams(t *testing.T) {
 func TestQueryParams_PrepareDefaults(t *testing.T) {
 	tests := []struct {
 		name           string
-		initialParams  QueryParams[*MockEntity]
+		initialParams  QueryParams[*testutil.TestEntity]
 		expectedPage   int
 		expectedSize   int
 		expectedOffset int
@@ -78,7 +73,7 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 	}{
 		{
 			name: "Valid page and size",
-			initialParams: QueryParams[*MockEntity]{
+			initialParams: QueryParams[*testutil.TestEntity]{
 				Page:     3,
 				PageSize: 25,
 			},
@@ -89,7 +84,7 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 		},
 		{
 			name: "Zero page (should default to 1)",
-			initialParams: QueryParams[*MockEntity]{
+			initialParams: QueryParams[*testutil.TestEntity]{
 				Page:     0,
 				PageSize: 10,
 			},
@@ -100,7 +95,7 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 		},
 		{
 			name: "Negative page (should default to 1)",
-			initialParams: QueryParams[*MockEntity]{
+			initialParams: QueryParams[*testutil.TestEntity]{
 				Page:     -5,
 				PageSize: 10,
 			},
@@ -111,7 +106,7 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 		},
 		{
 			name: "Zero page size (should default to 50)",
-			initialParams: QueryParams[*MockEntity]{
+			initialParams: QueryParams[*testutil.TestEntity]{
 				Page:     2,
 				PageSize: 0,
 			},
@@ -122,7 +117,7 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 		},
 		{
 			name: "Negative page size (should default to 50)",
-			initialParams: QueryParams[*MockEntity]{
+			initialParams: QueryParams[*testutil.TestEntity]{
 				Page:     1,
 				PageSize: -10,
 			},
@@ -133,7 +128,7 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 		},
 		{
 			name: "Page size too large (should cap at 200)",
-			initialParams: QueryParams[*MockEntity]{
+			initialParams: QueryParams[*testutil.TestEntity]{
 				Page:     1,
 				PageSize: 500,
 			},
@@ -144,7 +139,7 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 		},
 		{
 			name: "Page size at limit (200)",
-			initialParams: QueryParams[*MockEntity]{
+			initialParams: QueryParams[*testutil.TestEntity]{
 				Page:     2,
 				PageSize: 200,
 			},
@@ -203,7 +198,7 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 // TestQueryParams_PrepareDefaults_NilSlices validates slice initialization
 func TestQueryParams_PrepareDefaults_NilSlices(t *testing.T) {
 	// Arrange
-	params := QueryParams[*MockEntity]{
+	params := QueryParams[*testutil.TestEntity]{
 		Page:     1,
 		PageSize: 10,
 		Sort:     nil,
@@ -243,7 +238,7 @@ func TestQueryParams_PrepareDefaults_NilSlices(t *testing.T) {
 // TestQueryParams_AddSort validates sort field addition
 func TestQueryParams_AddSort(t *testing.T) {
 	// Arrange
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 
 	// Act
 	result := params.AddSort("name", SortOrderAsc)
@@ -286,7 +281,7 @@ func TestQueryParams_AddSort(t *testing.T) {
 // TestQueryParams_AddSortAsc validates ascending sort addition
 func TestQueryParams_AddSortAsc(t *testing.T) {
 	// Arrange
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 
 	// Act
 	result := params.AddSortAsc("email")
@@ -313,7 +308,7 @@ func TestQueryParams_AddSortAsc(t *testing.T) {
 // TestQueryParams_AddSortDesc validates descending sort addition
 func TestQueryParams_AddSortDesc(t *testing.T) {
 	// Arrange
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 
 	// Act
 	result := params.AddSortDesc("updated_at")
@@ -340,7 +335,7 @@ func TestQueryParams_AddSortDesc(t *testing.T) {
 // TestQueryParams_ClearSort validates sort field clearing
 func TestQueryParams_ClearSort(t *testing.T) {
 	// Arrange
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 	params.AddSort("name", SortOrderAsc)
 	params.AddSort("email", SortOrderDesc)
 
@@ -392,7 +387,7 @@ func TestQueryParams_WithSearch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			params := NewQueryParams[*MockEntity]()
+			params := NewQueryParams[*testutil.TestEntity]()
 
 			// Act
 			result := params.WithSearch(tt.searchTerm)

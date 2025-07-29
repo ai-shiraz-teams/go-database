@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database-sdk/pkg/testutil"
 )
 
 // TestQueryParams_WithPreloads validates preload relations setting
@@ -38,7 +39,7 @@ func TestQueryParams_WithPreloads(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			params := NewQueryParams[*MockEntity]()
+			params := NewQueryParams[*testutil.TestEntity]()
 
 			// Act
 			result := params.WithPreloads(tt.preloads)
@@ -64,7 +65,7 @@ func TestQueryParams_WithPreloads(t *testing.T) {
 // TestQueryParams_AddPreload validates individual preload addition
 func TestQueryParams_AddPreload(t *testing.T) {
 	// Arrange
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 
 	// Act & Assert - Add first preload
 	result := params.AddPreload("User")
@@ -135,7 +136,7 @@ func TestQueryParams_WithDeletedVisibility(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			params := NewQueryParams[*MockEntity]()
+			params := NewQueryParams[*testutil.TestEntity]()
 
 			// Act
 			result := params.WithDeletedVisibility(tt.includeDeleted, tt.onlyDeleted)
@@ -159,7 +160,7 @@ func TestQueryParams_WithDeletedVisibility(t *testing.T) {
 // TestQueryParams_IncludeDeletedRecords validates include deleted records setting
 func TestQueryParams_IncludeDeletedRecords(t *testing.T) {
 	// Arrange
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 	params.OnlyDeleted = true // Set initial state
 
 	// Act
@@ -182,7 +183,7 @@ func TestQueryParams_IncludeDeletedRecords(t *testing.T) {
 // TestQueryParams_OnlyDeletedRecords validates only deleted records setting
 func TestQueryParams_OnlyDeletedRecords(t *testing.T) {
 	// Arrange
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 	params.IncludeDeleted = true // Set initial state
 
 	// Act
@@ -205,7 +206,7 @@ func TestQueryParams_OnlyDeletedRecords(t *testing.T) {
 // TestQueryParams_ExcludeDeletedRecords validates exclude deleted records setting
 func TestQueryParams_ExcludeDeletedRecords(t *testing.T) {
 	// Arrange
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 	params.IncludeDeleted = true
 	params.OnlyDeleted = true
 
@@ -253,7 +254,7 @@ func TestQueryParams_HasSearch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			params := NewQueryParams[*MockEntity]()
+			params := NewQueryParams[*testutil.TestEntity]()
 			params.Search = tt.searchTerm
 
 			// Act
@@ -270,7 +271,7 @@ func TestQueryParams_HasSearch(t *testing.T) {
 // TestQueryParams_HasFilters validates filter detection
 func TestQueryParams_HasFilters(t *testing.T) {
 	// Arrange & Act - No filters
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 	result := params.HasFilters()
 
 	// Assert
@@ -290,7 +291,7 @@ func TestQueryParams_HasFilters(t *testing.T) {
 // TestQueryParams_HasSort validates sort detection
 func TestQueryParams_HasSort(t *testing.T) {
 	// Arrange & Act - No sort
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 	result := params.HasSort()
 
 	// Assert
@@ -310,7 +311,7 @@ func TestQueryParams_HasSort(t *testing.T) {
 // TestQueryParams_HasPreloads validates preload detection
 func TestQueryParams_HasPreloads(t *testing.T) {
 	// Arrange & Act - No preloads
-	params := NewQueryParams[*MockEntity]()
+	params := NewQueryParams[*testutil.TestEntity]()
 	result := params.HasPreloads()
 
 	// Assert
@@ -330,7 +331,7 @@ func TestQueryParams_HasPreloads(t *testing.T) {
 // TestQueryParams_Clone validates deep copying
 func TestQueryParams_Clone(t *testing.T) {
 	// Arrange
-	original := NewQueryParams[*MockEntity]()
+	original := NewQueryParams[*testutil.TestEntity]()
 	original.Page = 2
 	original.PageSize = 25
 	original.Offset = 25
@@ -411,7 +412,7 @@ func TestQueryParams_Clone(t *testing.T) {
 // TestQueryParams_Clone_NilSlices validates cloning with nil slices
 func TestQueryParams_Clone_NilSlices(t *testing.T) {
 	// Arrange
-	original := &QueryParams[*MockEntity]{
+	original := &QueryParams[*testutil.TestEntity]{
 		Page:     1,
 		PageSize: 50,
 		Sort:     nil,

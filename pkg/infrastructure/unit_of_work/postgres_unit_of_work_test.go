@@ -6,49 +6,16 @@ import (
 
 	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
 	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
 	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/unit_of_work"
-
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	"github.com/ai-shiraz-teams/go-database-sdk/pkg/testutil"
 )
-
-// TestEntity for testing PostgresUnitOfWork
-type TestEntity struct {
-	types.BaseEntity
-	Name        string `gorm:"column:name" json:"name"`
-	Description string `gorm:"column:description" json:"description"`
-	Status      string `gorm:"column:status" json:"status"`
-}
-
-func (te *TestEntity) TableName() string {
-	return "test_entities"
-}
-
-// setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Auto-migrate the test entity
-	if err := db.AutoMigrate(&TestEntity{}); err != nil {
-		t.Fatalf("Failed to migrate test entity: %v", err)
-	}
-
-	return db
-}
 
 func TestNewPostgresUnitOfWork(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 
 	// Act
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 
 	// Assert
 	if uow == nil {
@@ -56,7 +23,7 @@ func TestNewPostgresUnitOfWork(t *testing.T) {
 	}
 
 	// Type assertion to verify correct implementation
-	if _, ok := uow.(*PostgresUnitOfWork[*TestEntity]); !ok {
+	if _, ok := uow.(*PostgresUnitOfWork[*testutil.TestEntity]); !ok {
 		t.Fatal("Expected PostgresUnitOfWork implementation")
 	}
 }
@@ -64,19 +31,19 @@ func TestNewPostgresUnitOfWork(t *testing.T) {
 func TestPostgresUnitOfWork_Transaction_Management(t *testing.T) {
 	tests := []struct {
 		name        string
-		setupFunc   func(*testing.T, unit_of_work.IUnitOfWork[*TestEntity]) error
+		setupFunc   func(*testing.T, unit_of_work.IUnitOfWork[*testutil.TestEntity]) error
 		expectError bool
 	}{
 		{
 			name: "Begin transaction successfully",
-			setupFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*TestEntity]) error {
+			setupFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) error {
 				return uow.BeginTransaction(context.Background())
 			},
 			expectError: false,
 		},
 		{
 			name: "Fail to begin transaction when already in transaction",
-			setupFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*TestEntity]) error {
+			setupFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) error {
 				// Start first transaction
 				if err := uow.BeginTransaction(context.Background()); err != nil {
 					return err
@@ -91,8 +58,8 @@ func TestPostgresUnitOfWork_Transaction_Management(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupTestDB(t)
-			uow := NewPostgresUnitOfWork[*TestEntity](db)
+			db := testutil.SetupTestDB(t)
+			uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 
 			// Act
 			err := tt.setupFunc(t, uow)
@@ -131,8 +98,8 @@ func TestPostgresUnitOfWork_CommitTransaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupTestDB(t)
-			uow := NewPostgresUnitOfWork[*TestEntity](db)
+			db := testutil.SetupTestDB(t)
+			uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 
 			if tt.hasTransaction {
 				err := uow.BeginTransaction(context.Background())
@@ -170,8 +137,8 @@ func TestPostgresUnitOfWork_RollbackTransaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupTestDB(t)
-			uow := NewPostgresUnitOfWork[*TestEntity](db)
+			db := testutil.SetupTestDB(t)
+			uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 
 			if tt.hasTransaction {
 				err := uow.BeginTransaction(context.Background())
@@ -190,11 +157,11 @@ func TestPostgresUnitOfWork_RollbackTransaction(t *testing.T) {
 
 func TestPostgresUnitOfWork_Insert(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Test Entity",
 		Description: "Test Description",
 		Status:      "active",
@@ -220,12 +187,12 @@ func TestPostgresUnitOfWork_Insert(t *testing.T) {
 
 func TestPostgresUnitOfWork_FindAll(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
 	// Insert test data
-	entities := []*TestEntity{
+	entities := []*testutil.TestEntity{
 		{Name: "Entity 1", Status: "active"},
 		{Name: "Entity 2", Status: "active"},
 		{Name: "Entity 3", Status: "inactive"},
@@ -252,11 +219,11 @@ func TestPostgresUnitOfWork_FindAll(t *testing.T) {
 
 func TestPostgresUnitOfWork_FindOneById(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Test Entity",
 		Description: "Test Description",
 		Status:      "active",
@@ -287,11 +254,11 @@ func TestPostgresUnitOfWork_FindOneById(t *testing.T) {
 
 func TestPostgresUnitOfWork_FindOneByIdentifier(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Test Entity",
 		Description: "Test Description",
 		Status:      "active",
@@ -321,11 +288,11 @@ func TestPostgresUnitOfWork_FindOneByIdentifier(t *testing.T) {
 
 func TestPostgresUnitOfWork_Update(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Original Name",
 		Description: "Original Description",
 		Status:      "active",
@@ -362,11 +329,11 @@ func TestPostgresUnitOfWork_Update(t *testing.T) {
 
 func TestPostgresUnitOfWork_SoftDelete(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Test Entity",
 		Description: "Test Description",
 		Status:      "active",
@@ -399,11 +366,11 @@ func TestPostgresUnitOfWork_SoftDelete(t *testing.T) {
 
 func TestPostgresUnitOfWork_HardDelete(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Test Entity",
 		Description: "Test Description",
 		Status:      "active",
@@ -439,12 +406,12 @@ func TestPostgresUnitOfWork_HardDelete(t *testing.T) {
 
 func TestPostgresUnitOfWork_GetTrashed(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
 	// Insert and soft-delete some entities
-	entities := []*TestEntity{
+	entities := []*testutil.TestEntity{
 		{Name: "Entity 1", Status: "active"},
 		{Name: "Entity 2", Status: "active"},
 	}
@@ -477,11 +444,11 @@ func TestPostgresUnitOfWork_GetTrashed(t *testing.T) {
 
 func TestPostgresUnitOfWork_Restore(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Test Entity",
 		Description: "Test Description",
 		Status:      "active",
@@ -524,13 +491,13 @@ func TestPostgresUnitOfWork_Restore(t *testing.T) {
 func TestPostgresUnitOfWork_BulkInsert(t *testing.T) {
 	tests := []struct {
 		name          string
-		entities      []*TestEntity
+		entities      []*testutil.TestEntity
 		expectError   bool
 		expectedCount int
 	}{
 		{
 			name: "Insert multiple entities successfully",
-			entities: []*TestEntity{
+			entities: []*testutil.TestEntity{
 				{Name: "Entity 1", Status: "active"},
 				{Name: "Entity 2", Status: "active"},
 				{Name: "Entity 3", Status: "inactive"},
@@ -540,7 +507,7 @@ func TestPostgresUnitOfWork_BulkInsert(t *testing.T) {
 		},
 		{
 			name:          "Insert empty slice",
-			entities:      []*TestEntity{},
+			entities:      []*testutil.TestEntity{},
 			expectError:   false,
 			expectedCount: 0,
 		},
@@ -549,8 +516,8 @@ func TestPostgresUnitOfWork_BulkInsert(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupTestDB(t)
-			uow := NewPostgresUnitOfWork[*TestEntity](db)
+			db := testutil.SetupTestDB(t)
+			uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 			ctx := context.Background()
 
 			// Act
@@ -581,12 +548,12 @@ func TestPostgresUnitOfWork_BulkInsert(t *testing.T) {
 
 func TestPostgresUnitOfWork_Count(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
 	// Insert test data
-	entities := []*TestEntity{
+	entities := []*testutil.TestEntity{
 		{Name: "Entity 1", Status: "active"},
 		{Name: "Entity 2", Status: "active"},
 		{Name: "Entity 3", Status: "inactive"},
@@ -599,7 +566,7 @@ func TestPostgresUnitOfWork_Count(t *testing.T) {
 		}
 	}
 
-	queryParams := query.NewQueryParams[*TestEntity]()
+	queryParams := query.NewQueryParams[*testutil.TestEntity]()
 
 	// Act
 	count, err := uow.Count(ctx, queryParams)
@@ -615,11 +582,11 @@ func TestPostgresUnitOfWork_Count(t *testing.T) {
 
 func TestPostgresUnitOfWork_Exists(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Test Entity",
 		Description: "Test Description",
 		Status:      "active",
@@ -665,13 +632,13 @@ func TestPostgresUnitOfWork_Exists(t *testing.T) {
 
 func TestPostgresUnitOfWork_FindAllWithPagination(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
 	// Insert test data
 	for i := 1; i <= 10; i++ {
-		entity := &TestEntity{
+		entity := &testutil.TestEntity{
 			Name:   "Entity " + string(rune(i+'0')),
 			Status: "active",
 		}
@@ -681,7 +648,7 @@ func TestPostgresUnitOfWork_FindAllWithPagination(t *testing.T) {
 		}
 	}
 
-	queryParams := query.NewQueryParams[*TestEntity]()
+	queryParams := query.NewQueryParams[*testutil.TestEntity]()
 	queryParams.Limit = 5
 	queryParams.Offset = 0
 
@@ -702,8 +669,8 @@ func TestPostgresUnitOfWork_FindAllWithPagination(t *testing.T) {
 
 func TestPostgresUnitOfWork_Transaction_Lifecycle(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
 	// Act & Assert - Complete transaction lifecycle
@@ -713,7 +680,7 @@ func TestPostgresUnitOfWork_Transaction_Lifecycle(t *testing.T) {
 	}
 
 	// Insert entity within transaction
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Transaction Entity",
 		Description: "Test in transaction",
 		Status:      "active",
@@ -742,8 +709,8 @@ func TestPostgresUnitOfWork_Transaction_Lifecycle(t *testing.T) {
 
 func TestPostgresUnitOfWork_Transaction_Rollback_Lifecycle(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
 	// Act & Assert - Transaction rollback lifecycle
@@ -753,7 +720,7 @@ func TestPostgresUnitOfWork_Transaction_Rollback_Lifecycle(t *testing.T) {
 	}
 
 	// Insert entity within transaction
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Rollback Entity",
 		Description: "Test rollback",
 		Status:      "active",
@@ -776,11 +743,11 @@ func TestPostgresUnitOfWork_Transaction_Rollback_Lifecycle(t *testing.T) {
 
 func TestPostgresUnitOfWork_ResolveIDByUniqueField(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
-	entity := &TestEntity{
+	entity := &testutil.TestEntity{
 		Name:        "Unique Name",
 		Description: "Test Description",
 		Status:      "active",
@@ -805,12 +772,12 @@ func TestPostgresUnitOfWork_ResolveIDByUniqueField(t *testing.T) {
 
 func TestPostgresUnitOfWork_RestoreAll(t *testing.T) {
 	// Arrange
-	db := setupTestDB(t)
-	uow := NewPostgresUnitOfWork[*TestEntity](db)
+	db := testutil.SetupTestDB(t)
+	uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 	ctx := context.Background()
 
 	// Insert and soft-delete multiple entities
-	entities := []*TestEntity{
+	entities := []*testutil.TestEntity{
 		{Name: "Entity 1", Status: "active"},
 		{Name: "Entity 2", Status: "active"},
 		{Name: "Entity 3", Status: "active"},
@@ -855,12 +822,12 @@ func TestPostgresUnitOfWork_RestoreAll(t *testing.T) {
 func TestPostgresUnitOfWork_Error_Cases(t *testing.T) {
 	tests := []struct {
 		name        string
-		testFunc    func(*testing.T, unit_of_work.IUnitOfWork[*TestEntity])
+		testFunc    func(*testing.T, unit_of_work.IUnitOfWork[*testutil.TestEntity])
 		expectError bool
 	}{
 		{
 			name: "FindOneById with non-existent ID",
-			testFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*TestEntity]) {
+			testFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) {
 				_, err := uow.FindOneById(context.Background(), 99999)
 				if err == nil {
 					t.Error("Expected error for non-existent ID")
@@ -870,9 +837,9 @@ func TestPostgresUnitOfWork_Error_Cases(t *testing.T) {
 		},
 		{
 			name: "Update non-existent entity",
-			testFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*TestEntity]) {
+			testFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) {
 				identifierBuilder := identifier.NewIdentifier().Equal("id", 99999)
-				entity := &TestEntity{Name: "Non-existent"}
+				entity := &testutil.TestEntity{Name: "Non-existent"}
 				_, err := uow.Update(context.Background(), identifierBuilder, entity)
 				if err == nil {
 					t.Error("Expected error for updating non-existent entity")
@@ -882,7 +849,7 @@ func TestPostgresUnitOfWork_Error_Cases(t *testing.T) {
 		},
 		{
 			name: "SoftDelete non-existent entity",
-			testFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*TestEntity]) {
+			testFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) {
 				identifierBuilder := identifier.NewIdentifier().Equal("id", 99999)
 				_, err := uow.SoftDelete(context.Background(), identifierBuilder)
 				if err == nil {
@@ -896,8 +863,8 @@ func TestPostgresUnitOfWork_Error_Cases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupTestDB(t)
-			uow := NewPostgresUnitOfWork[*TestEntity](db)
+			db := testutil.SetupTestDB(t)
+			uow := NewPostgresUnitOfWork[*testutil.TestEntity](db)
 
 			// Act & Assert
 			tt.testFunc(t, uow)

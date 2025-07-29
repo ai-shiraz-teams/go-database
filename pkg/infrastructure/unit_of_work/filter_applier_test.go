@@ -4,38 +4,8 @@ import (
 	"testing"
 
 	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
-
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	"github.com/ai-shiraz-teams/go-database-sdk/pkg/testutil"
 )
-
-// FilterTestEntity for testing filter application
-type FilterTestEntity struct {
-	types.BaseEntity
-	Name     string `gorm:"column:name"`
-	Email    string `gorm:"column:email"`
-	Age      int    `gorm:"column:age"`
-	IsActive bool   `gorm:"column:is_active"`
-}
-
-// setupFilterTestDB creates an in-memory SQLite database for testing
-func setupFilterTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
-
-	// Auto-migrate the test entity
-	if err := db.AutoMigrate(&FilterTestEntity{}); err != nil {
-		t.Fatalf("Failed to migrate test entity: %v", err)
-	}
-
-	return db
-}
 
 // TestNewFilterApplier validates FilterApplier creation
 func TestNewFilterApplier(t *testing.T) {
@@ -51,9 +21,9 @@ func TestNewFilterApplier(t *testing.T) {
 // TestFilterApplier_ApplyFilters_EmptyFilters validates empty filter handling
 func TestFilterApplier_ApplyFilters_EmptyFilters(t *testing.T) {
 	// Arrange
-	db := setupFilterTestDB(t)
+	db := testutil.SetupTestDB(t)
 	fa := NewFilterApplier()
-	query := db.Model(&FilterTestEntity{})
+	query := db.Model(&testutil.TestEntity{})
 
 	// Act
 	result := fa.ApplyFilters(query, []identifier.FilterCriteria{})
@@ -160,9 +130,9 @@ func TestFilterApplier_ApplyFilters_SingleFilter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupFilterTestDB(t)
+			db := testutil.SetupTestDB(t)
 			fa := NewFilterApplier()
-			query := db.Model(&FilterTestEntity{})
+			query := db.Model(&testutil.TestEntity{})
 
 			// Act
 			result := fa.ApplyFilters(query, []identifier.FilterCriteria{tt.filter})
@@ -209,9 +179,9 @@ func TestFilterApplier_ApplyFilters_InOperator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupFilterTestDB(t)
+			db := testutil.SetupTestDB(t)
 			fa := NewFilterApplier()
-			query := db.Model(&FilterTestEntity{})
+			query := db.Model(&testutil.TestEntity{})
 			filter := identifier.FilterCriteria{
 				Field:    "id",
 				Operator: identifier.FilterOperatorIn,
@@ -248,9 +218,9 @@ func TestFilterApplier_ApplyFilters_NotInOperator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupFilterTestDB(t)
+			db := testutil.SetupTestDB(t)
 			fa := NewFilterApplier()
-			query := db.Model(&FilterTestEntity{})
+			query := db.Model(&testutil.TestEntity{})
 			filter := identifier.FilterCriteria{
 				Field:    "id",
 				Operator: identifier.FilterOperatorNotIn,
@@ -291,9 +261,9 @@ func TestFilterApplier_ApplyFilters_BetweenOperator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupFilterTestDB(t)
+			db := testutil.SetupTestDB(t)
 			fa := NewFilterApplier()
-			query := db.Model(&FilterTestEntity{})
+			query := db.Model(&testutil.TestEntity{})
 			filter := identifier.FilterCriteria{
 				Field:    "age",
 				Operator: identifier.FilterOperatorBetween,
@@ -314,9 +284,9 @@ func TestFilterApplier_ApplyFilters_BetweenOperator(t *testing.T) {
 // TestFilterApplier_ApplyFilters_MultipleFilters validates multiple filter handling
 func TestFilterApplier_ApplyFilters_MultipleFilters(t *testing.T) {
 	// Arrange
-	db := setupFilterTestDB(t)
+	db := testutil.SetupTestDB(t)
 	fa := NewFilterApplier()
-	query := db.Model(&FilterTestEntity{})
+	query := db.Model(&testutil.TestEntity{})
 
 	filters := []identifier.FilterCriteria{
 		{
@@ -344,9 +314,9 @@ func TestFilterApplier_ApplyFilters_MultipleFilters(t *testing.T) {
 // TestFilterApplier_ApplyFilters_OrLogicalOperator validates OR logical operator
 func TestFilterApplier_ApplyFilters_OrLogicalOperator(t *testing.T) {
 	// Arrange
-	db := setupFilterTestDB(t)
+	db := testutil.SetupTestDB(t)
 	fa := NewFilterApplier()
-	query := db.Model(&FilterTestEntity{})
+	query := db.Model(&testutil.TestEntity{})
 
 	filters := []identifier.FilterCriteria{
 		{
@@ -374,9 +344,9 @@ func TestFilterApplier_ApplyFilters_OrLogicalOperator(t *testing.T) {
 // TestFilterApplier_ApplyFilters_UnknownOperator validates unknown operator handling
 func TestFilterApplier_ApplyFilters_UnknownOperator(t *testing.T) {
 	// Arrange
-	db := setupFilterTestDB(t)
+	db := testutil.SetupTestDB(t)
 	fa := NewFilterApplier()
-	query := db.Model(&FilterTestEntity{})
+	query := db.Model(&testutil.TestEntity{})
 
 	filter := identifier.FilterCriteria{
 		Field:    "name",
@@ -401,9 +371,9 @@ func TestFilterApplier_ApplyFilters_UnknownOperator(t *testing.T) {
 // TestFilterApplier_ApplyIdentifier validates identifier application
 func TestFilterApplier_ApplyIdentifier(t *testing.T) {
 	// Arrange
-	db := setupFilterTestDB(t)
+	db := testutil.SetupTestDB(t)
 	fa := NewFilterApplier()
-	query := db.Model(&FilterTestEntity{})
+	query := db.Model(&testutil.TestEntity{})
 
 	// Create a mock identifier
 	ident := identifier.NewIdentifier().Equal("name", "John")
@@ -420,9 +390,9 @@ func TestFilterApplier_ApplyIdentifier(t *testing.T) {
 // TestFilterApplier_ApplyIdentifier_Nil validates nil identifier handling
 func TestFilterApplier_ApplyIdentifier_Nil(t *testing.T) {
 	// Arrange
-	db := setupFilterTestDB(t)
+	db := testutil.SetupTestDB(t)
 	fa := NewFilterApplier()
-	query := db.Model(&FilterTestEntity{})
+	query := db.Model(&testutil.TestEntity{})
 
 	// Act
 	result := fa.ApplyIdentifier(query, nil)
@@ -525,9 +495,9 @@ func TestFilterApplier_ValidateFilterValue(t *testing.T) {
 // TestFilterApplier_ApplyQueryParams validates query parameters application
 func TestFilterApplier_ApplyQueryParams(t *testing.T) {
 	// Arrange
-	db := setupFilterTestDB(t)
+	db := testutil.SetupTestDB(t)
 	fa := NewFilterApplier()
-	query := db.Model(&FilterTestEntity{})
+	query := db.Model(&testutil.TestEntity{})
 
 	// Create a simple query params struct
 	params := struct {
@@ -550,9 +520,9 @@ func TestFilterApplier_ApplyQueryParams(t *testing.T) {
 // TestFilterApplier_ApplyQueryParams_EmptyStruct validates empty struct handling
 func TestFilterApplier_ApplyQueryParams_EmptyStruct(t *testing.T) {
 	// Arrange
-	db := setupFilterTestDB(t)
+	db := testutil.SetupTestDB(t)
 	fa := NewFilterApplier()
-	query := db.Model(&FilterTestEntity{})
+	query := db.Model(&testutil.TestEntity{})
 
 	params := struct{}{}
 
@@ -573,9 +543,9 @@ func TestFilterApplier_ApplyQueryParams_EmptyStruct(t *testing.T) {
 // TestFilterApplier_ApplyQueryParams_Nil validates nil parameters handling
 func TestFilterApplier_ApplyQueryParams_Nil(t *testing.T) {
 	// Arrange
-	db := setupFilterTestDB(t)
+	db := testutil.SetupTestDB(t)
 	fa := NewFilterApplier()
-	query := db.Model(&FilterTestEntity{})
+	query := db.Model(&testutil.TestEntity{})
 
 	// Act
 	result := fa.ApplyQueryParams(query, nil)
@@ -648,9 +618,9 @@ func TestFilterApplier_ApplyQueryParams_VariousTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
-			db := setupFilterTestDB(t)
+			db := testutil.SetupTestDB(t)
 			fa := NewFilterApplier()
-			query := db.Model(&FilterTestEntity{})
+			query := db.Model(&testutil.TestEntity{})
 
 			// Act
 			result := fa.ApplyQueryParams(query, tt.params)
