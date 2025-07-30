@@ -3,10 +3,10 @@ package repository
 import (
 	"context"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
-	"github.com/ai-shiraz-teams/go-database-sdk/pkg/testutil"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 
 // mockUnitOfWork provides a local mock implementation for repository testing.

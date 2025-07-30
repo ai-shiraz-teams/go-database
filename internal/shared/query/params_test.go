@@ -3,7 +3,7 @@ package query
 import (
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/pkg/testutil"
+	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 
 // TestNewQueryParams validates QueryParams creation with defaults

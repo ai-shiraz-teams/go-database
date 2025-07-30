@@ -1,8 +1,8 @@
 package query
 
 import (
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
 )
 
 // QueryParams provides a typed, reusable structure for paginated repository access.
