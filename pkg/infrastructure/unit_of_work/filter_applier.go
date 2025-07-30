@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	queryparams "github.com/ai-shiraz-teams/go-database-sdk/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
+	queryparams "github.com/ai-shiraz-teams/go-database/internal/shared/query"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
 
 	"gorm.io/gorm"
 )

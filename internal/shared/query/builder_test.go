@@ -3,8 +3,8 @@ package query
 import (
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database-sdk/pkg/testutil"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 
 // TestQueryParams_WithPreloads validates preload relations setting

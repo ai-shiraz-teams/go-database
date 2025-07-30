@@ -9,7 +9,7 @@ A clean, pluggable Go SDK for database abstractions, repository patterns, unit o
 ## Install
 
 ```bash
-go get github.com/ai-shiraz-teams/go-database-sdk
+go get github.com/ai-shiraz-teams/go-database
 ```
 
 ## Folder Structure
@@ -29,9 +29,9 @@ go get github.com/ai-shiraz-teams/go-database-sdk
 
 ```go
 import (
-    "github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
-    "github.com/ai-shiraz-teams/go-database-sdk/internal/shared/repository"
-    "github.com/ai-shiraz-teams/go-database-sdk/pkg/infrastructure/unit_of_work"
+    "github.com/ai-shiraz-teams/go-database/internal/shared/types"
+    "github.com/ai-shiraz-teams/go-database/internal/shared/repository"
+    "github.com/ai-shiraz-teams/go-database/pkg/infrastructure/unit_of_work"
     "gorm.io/gorm"
 )
 

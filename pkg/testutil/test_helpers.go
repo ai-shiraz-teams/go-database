@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

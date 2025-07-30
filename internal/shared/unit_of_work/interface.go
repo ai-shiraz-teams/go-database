@@ -3,9 +3,9 @@ package unit_of_work
 import (
 	"context"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
 )
 
 // IUnitOfWork defines the contract for transactional repository access across all modules.
