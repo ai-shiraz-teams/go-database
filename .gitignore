@@ -1,0 +1,20 @@
+# Go build
+/bin/
+/dist/
+*.exe
+*.out
+*.test
+
+# Go modules
+go.sum
+
+# IDE/Editor files
+.vscode/
+.idea/
+.DS_Store
+
+# OS-specific
+Thumbs.db
+
+# Test artifacts
+coverage.out
