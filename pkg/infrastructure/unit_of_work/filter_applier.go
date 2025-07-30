@@ -144,7 +144,7 @@ func (fa *FilterApplier) applySingleFilter(query *gorm.DB, filter identifier.Fil
 
 	case identifier.FilterOperatorHas:
 		// For JSON fields - PostgreSQL specific
-		condition = fmt.Sprintf("%s ? ?", field)
+		condition = fmt.Sprintf("%s ?", field)
 		args = []interface{}{value}
 
 	default:
