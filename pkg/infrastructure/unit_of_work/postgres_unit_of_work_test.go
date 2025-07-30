@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/unit_of_work"
-	"github.com/ai-shiraz-teams/go-database-sdk/pkg/testutil"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/unit_of_work"
+	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 
 func TestNewPostgresUnitOfWork(t *testing.T) {

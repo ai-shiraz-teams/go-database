@@ -3,8 +3,8 @@ package unit_of_work
 import (
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database-sdk/pkg/testutil"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 
 // TestNewFilterApplier validates FilterApplier creation

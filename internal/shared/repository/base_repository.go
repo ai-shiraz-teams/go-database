@@ -3,10 +3,10 @@ package repository
 import (
 	"context"
 
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/types"
-	"github.com/ai-shiraz-teams/go-database-sdk/internal/shared/unit_of_work"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/internal/shared/unit_of_work"
 )
 
 // BaseRepository provides a generic repository implementation that delegates all operations

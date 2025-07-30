@@ -1,4 +1,4 @@
-module github.com/ai-shiraz-teams/go-database-sdk
+module github.com/ai-shiraz-teams/go-database
 
 go 1.24
 
