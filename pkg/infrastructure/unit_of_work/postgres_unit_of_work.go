@@ -138,6 +138,17 @@ func (uow *PostgresUnitOfWork[T]) FindOneById(ctx context.Context, id int) (T, e
 	return entity, nil
 }
 
+// FindOneBySlug retrieves a single entity by its slug (public identifier)
+func (uow *PostgresUnitOfWork[T]) FindOneBySlug(ctx context.Context, slug string) (T, error) {
+	var entity T
+	db := uow.getDB()
+	if err := db.WithContext(ctx).Where("slug = ?", slug).First(&entity).Error; err != nil {
+		var zero T
+		return zero, err
+	}
+	return entity, nil
+}
+
 // FindOneByIdentifier retrieves a single entity using the IIdentifier filter system
 func (uow *PostgresUnitOfWork[T]) FindOneByIdentifier(ctx context.Context, identifier identifier.IIdentifier) (T, error) {
 	var entity T

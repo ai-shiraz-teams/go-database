@@ -8,6 +8,8 @@ import (
 )
 
 // IUnitOfWork defines the contract for transactional repository access across all modules.
+// 
+// 🎯 ARCHITECTURE PRINCIPLE: No ID operations exposed - use slug-based operations only
 type IUnitOfWork[T types.IBaseModel] interface {
 	// BeginTransaction starts a new database transaction
 	BeginTransaction(ctx context.Context) error
@@ -27,8 +29,11 @@ type IUnitOfWork[T types.IBaseModel] interface {
 	// FindOne retrieves a single entity matching the provided filter
 	FindOne(ctx context.Context, filter T) (T, error)
 
-	// FindOneById retrieves a single entity by its ID
+	// FindOneById retrieves a single entity by its ID (internal use only)
 	FindOneById(ctx context.Context, id int) (T, error)
+
+	// FindOneBySlug retrieves a single entity by its slug (public identifier)
+	FindOneBySlug(ctx context.Context, slug string) (T, error)
 
 	// FindOneByIdentifier retrieves a single entity using the IIdentifier filter system
 	FindOneByIdentifier(ctx context.Context, identifier identifier.IIdentifier) (T, error)

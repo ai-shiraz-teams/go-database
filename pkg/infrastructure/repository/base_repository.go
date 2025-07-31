@@ -44,6 +44,11 @@ func (r *BaseRepository[T]) FindOneById(ctx context.Context, id int) (T, error) 
 	return r.uow.FindOneById(ctx, id)
 }
 
+// FindOneBySlug retrieves a single entity by its slug (public identifier)
+func (r *BaseRepository[T]) FindOneBySlug(ctx context.Context, slug string) (T, error) {
+	return r.uow.FindOneBySlug(ctx, slug)
+}
+
 // FindOneByIdentifier retrieves a single entity using the IIdentifier filter system
 func (r *BaseRepository[T]) FindOneByIdentifier(ctx context.Context, identifier identifier.IIdentifier) (T, error) {
 	return r.uow.FindOneByIdentifier(ctx, identifier)

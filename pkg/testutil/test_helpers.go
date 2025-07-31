@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"fmt"
 	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
 	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
 	"testing"
@@ -29,28 +30,28 @@ func (te *TestEntity) GetID() int {
 }
 
 func (te *TestEntity) GetCreatedAt() time.Time {
-	//TODO implement me
-	panic("implement me")
+	return te.CreatedAt
 }
 
 func (te *TestEntity) GetUpdatedAt() time.Time {
-	//TODO implement me
-	panic("implement me")
+	return te.UpdatedAt
 }
 
 func (te *TestEntity) GetDeletedAt() *time.Time {
-	//TODO implement me
-	panic("implement me")
+	if te.DeletedAt.Valid {
+		return &te.DeletedAt.Time
+	}
+	return nil
 }
 
+// GetVersion and SetVersion are not part of IBaseModel interface but kept for compatibility
 func (te *TestEntity) GetVersion() int {
-	//TODO implement me
-	panic("implement me")
+	// Version field doesn't exist in TestEntity, returning default
+	return 0
 }
 
 func (te *TestEntity) SetVersion(version int) {
-	//TODO implement me
-	panic("implement me")
+	// Version field doesn't exist in TestEntity, no-op for compatibility
 }
 
 // TableName returns the table name for GORM
@@ -78,11 +79,28 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+// generateUniqueSlug creates a unique slug for testing purposes
+func generateUniqueSlug(prefix string) string {
+	timestamp := time.Now().UnixNano()
+	return fmt.Sprintf("%s-%d", prefix, timestamp)
+}
+
+// NewTestEntity creates a new test entity with a unique slug
+func NewTestEntity(name, status string) *TestEntity {
+	return &TestEntity{
+		BaseEntity: types.BaseEntity{
+			Slug: generateUniqueSlug(name),
+		},
+		Name:   name,
+		Status: status,
+	}
+}
+
 // CreateTestEntities creates sample test entities for testing purposes
 func CreateTestEntities() []*TestEntity {
 	return []*TestEntity{
 		{
-			BaseEntity:  types.BaseEntity{ID: 1},
+			BaseEntity:  types.BaseEntity{ID: 1, Slug: generateUniqueSlug("john-doe")},
 			Name:        "John Doe",
 			Email:       "john@example.com",
 			Age:         30,
@@ -91,7 +109,7 @@ func CreateTestEntities() []*TestEntity {
 			Status:      "active",
 		},
 		{
-			BaseEntity:  types.BaseEntity{ID: 2},
+			BaseEntity:  types.BaseEntity{ID: 2, Slug: generateUniqueSlug("jane-smith")},
 			Name:        "Jane Smith",
 			Email:       "jane@example.com",
 			Age:         25,
@@ -100,7 +118,7 @@ func CreateTestEntities() []*TestEntity {
 			Status:      "inactive",
 		},
 		{
-			BaseEntity:  types.BaseEntity{ID: 3},
+			BaseEntity:  types.BaseEntity{ID: 3, Slug: generateUniqueSlug("bob-johnson")},
 			Name:        "Bob Johnson",
 			Email:       "bob@example.com",
 			Age:         35,
@@ -119,6 +137,7 @@ type MockUnitOfWork struct {
 	FindAllWithPaginationCalled    bool
 	FindOneCalled                  bool
 	FindOneByIdCalled              bool
+	FindOneBySlugCalled            bool
 	FindOneByIdentifierCalled      bool
 	InsertCalled                   bool
 	UpdateCalled                   bool
@@ -146,6 +165,7 @@ type MockUnitOfWork struct {
 	FindAllWithPaginationCount     int64
 	FindOneResult                  *TestEntity
 	FindOneByIdResult              *TestEntity
+	FindOneBySlugResult            *TestEntity
 	FindOneByIdentifierResult      *TestEntity
 	InsertResult                   *TestEntity
 	UpdateResult                   *TestEntity
@@ -166,6 +186,7 @@ type MockUnitOfWork struct {
 	FindAllWithPaginationError    error
 	FindOneError                  error
 	FindOneByIdError              error
+	FindOneBySlugError            error
 	FindOneByIdentifierError      error
 	InsertError                   error
 	UpdateError                   error
@@ -206,6 +227,11 @@ func (m *MockUnitOfWork) FindOne(ctx context.Context, filter *TestEntity) (*Test
 func (m *MockUnitOfWork) FindOneById(ctx context.Context, id int) (*TestEntity, error) {
 	m.FindOneByIdCalled = true
 	return m.FindOneByIdResult, m.FindOneByIdError
+}
+
+func (m *MockUnitOfWork) FindOneBySlug(ctx context.Context, slug string) (*TestEntity, error) {
+	m.FindOneBySlugCalled = true
+	return m.FindOneBySlugResult, m.FindOneBySlugError
 }
 
 func (m *MockUnitOfWork) FindOneByIdentifier(ctx context.Context, identifier identifier.IIdentifier) (*TestEntity, error) {

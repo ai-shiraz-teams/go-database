@@ -3,11 +3,9 @@ package identifier
 import "sync"
 
 // IdentifierBuilder provides a concrete implementation of IIdentifier interface.
-// It builds filter criteria in a fluent, chainable manner while maintaining immutability.
-// Each operation returns a new instance to ensure thread safety and prevent side effects.
 type IdentifierBuilder struct {
 	criteria []FilterCriteria
-	mutex    sync.RWMutex // Ensures thread safety for read operations
+	mutex    sync.RWMutex
 }
 
 // NewIdentifier creates a new empty IdentifierBuilder instance

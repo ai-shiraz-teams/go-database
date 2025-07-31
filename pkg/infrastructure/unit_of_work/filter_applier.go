@@ -161,7 +161,8 @@ func (fa *FilterApplier) ApplyQueryParams(query *gorm.DB, params interface{}) *g
 
 	if searchField := val.FieldByName("Search"); searchField.IsValid() {
 		if search, ok := searchField.Interface().(string); ok && search != "" {
-			query = query.Where("CAST(id AS TEXT) LIKE ?", "%"+search+"%")
+			// Use slug for search instead of exposing internal ID
+			query = query.Where("slug LIKE ?", "%"+search+"%")
 		}
 	}
 
