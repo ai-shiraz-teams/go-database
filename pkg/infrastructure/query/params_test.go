@@ -6,12 +6,10 @@ import (
 	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 
-// TestNewQueryParams validates QueryParams creation with defaults
 func TestNewQueryParams(t *testing.T) {
-	// Arrange & Act
+
 	params := NewQueryParams[*testutil.TestEntity]()
 
-	// Assert
 	if params == nil {
 		t.Fatal("NewQueryParams returned nil")
 	}
@@ -61,7 +59,6 @@ func TestNewQueryParams(t *testing.T) {
 	}
 }
 
-// TestQueryParams_PrepareDefaults validates default preparation and validation
 func TestQueryParams_PrepareDefaults(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -79,7 +76,7 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 			},
 			expectedPage:   3,
 			expectedSize:   25,
-			expectedOffset: 50, // (3-1) * 25
+			expectedOffset: 50,
 			expectedLimit:  25,
 		},
 		{
@@ -152,13 +149,11 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Arrange
+
 			params := tt.initialParams
 
-			// Act
 			result := params.PrepareDefaults()
 
-			// Assert
 			if result != &params {
 				t.Error("PrepareDefaults should return pointer to same instance")
 			}
@@ -171,15 +166,14 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 				t.Errorf("Expected PageSize %d, got %d", tt.expectedSize, params.PageSize)
 			}
 
-			if params.Offset != tt.expectedOffset {
-				t.Errorf("Expected Offset %d, got %d", tt.expectedOffset, params.Offset)
+			if params.ComputedOffset != tt.expectedOffset {
+				t.Errorf("Expected ComputedOffset %d, got %d", tt.expectedOffset, params.ComputedOffset)
 			}
 
-			if params.Limit != tt.expectedLimit {
-				t.Errorf("Expected Limit %d, got %d", tt.expectedLimit, params.Limit)
+			if params.ComputedLimit != tt.expectedLimit {
+				t.Errorf("Expected ComputedLimit %d, got %d", tt.expectedLimit, params.ComputedLimit)
 			}
 
-			// Verify slices are initialized
 			if params.Sort == nil {
 				t.Error("Expected Sort slice to be initialized")
 			}
@@ -195,9 +189,8 @@ func TestQueryParams_PrepareDefaults(t *testing.T) {
 	}
 }
 
-// TestQueryParams_PrepareDefaults_NilSlices validates slice initialization
 func TestQueryParams_PrepareDefaults_NilSlices(t *testing.T) {
-	// Arrange
+
 	params := QueryParams[*testutil.TestEntity]{
 		Page:     1,
 		PageSize: 10,
@@ -206,10 +199,8 @@ func TestQueryParams_PrepareDefaults_NilSlices(t *testing.T) {
 		Preloads: nil,
 	}
 
-	// Act
 	params.PrepareDefaults()
 
-	// Assert
 	if params.Sort == nil {
 		t.Error("Expected Sort slice to be initialized")
 	}
@@ -235,15 +226,12 @@ func TestQueryParams_PrepareDefaults_NilSlices(t *testing.T) {
 	}
 }
 
-// TestQueryParams_AddSort validates sort field addition
 func TestQueryParams_AddSort(t *testing.T) {
-	// Arrange
+
 	params := NewQueryParams[*testutil.TestEntity]()
 
-	// Act
 	result := params.AddSort("name", SortOrderAsc)
 
-	// Assert
 	if result != params {
 		t.Error("AddSort should return pointer to same instance")
 	}
@@ -261,7 +249,6 @@ func TestQueryParams_AddSort(t *testing.T) {
 		t.Errorf("Expected Order %q, got %q", SortOrderAsc, sortField.Order)
 	}
 
-	// Add another sort field
 	params.AddSort("created_at", SortOrderDesc)
 
 	if len(params.Sort) != 2 {
@@ -278,15 +265,12 @@ func TestQueryParams_AddSort(t *testing.T) {
 	}
 }
 
-// TestQueryParams_AddSortAsc validates ascending sort addition
 func TestQueryParams_AddSortAsc(t *testing.T) {
-	// Arrange
+
 	params := NewQueryParams[*testutil.TestEntity]()
 
-	// Act
 	result := params.AddSortAsc("email")
 
-	// Assert
 	if result != params {
 		t.Error("AddSortAsc should return pointer to same instance")
 	}
@@ -305,15 +289,12 @@ func TestQueryParams_AddSortAsc(t *testing.T) {
 	}
 }
 
-// TestQueryParams_AddSortDesc validates descending sort addition
 func TestQueryParams_AddSortDesc(t *testing.T) {
-	// Arrange
+
 	params := NewQueryParams[*testutil.TestEntity]()
 
-	// Act
 	result := params.AddSortDesc("updated_at")
 
-	// Assert
 	if result != params {
 		t.Error("AddSortDesc should return pointer to same instance")
 	}
@@ -332,9 +313,8 @@ func TestQueryParams_AddSortDesc(t *testing.T) {
 	}
 }
 
-// TestQueryParams_ClearSort validates sort field clearing
 func TestQueryParams_ClearSort(t *testing.T) {
-	// Arrange
+
 	params := NewQueryParams[*testutil.TestEntity]()
 	params.AddSort("name", SortOrderAsc)
 	params.AddSort("email", SortOrderDesc)
@@ -343,10 +323,8 @@ func TestQueryParams_ClearSort(t *testing.T) {
 		t.Fatalf("Expected 2 sort fields, got %d", len(params.Sort))
 	}
 
-	// Act
 	result := params.ClearSort()
 
-	// Assert
 	if result != params {
 		t.Error("ClearSort should return pointer to same instance")
 	}
@@ -360,7 +338,6 @@ func TestQueryParams_ClearSort(t *testing.T) {
 	}
 }
 
-// TestQueryParams_WithSearch validates search term setting
 func TestQueryParams_WithSearch(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -386,13 +363,11 @@ func TestQueryParams_WithSearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Arrange
+
 			params := NewQueryParams[*testutil.TestEntity]()
 
-			// Act
 			result := params.WithSearch(tt.searchTerm)
 
-			// Assert
 			if result != params {
 				t.Error("WithSearch should return pointer to same instance")
 			}
