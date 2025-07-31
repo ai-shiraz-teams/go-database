@@ -2,13 +2,14 @@ package unit_of_work
 
 import (
 	"context"
+
 	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
 	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/query"
 	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
 )
 
 // IUnitOfWork defines the contract for transactional repository access across all modules.
-// 
+//
 // 🎯 ARCHITECTURE PRINCIPLE: No ID operations exposed - use slug-based operations only
 type IUnitOfWork[T types.IBaseModel] interface {
 	// BeginTransaction starts a new database transaction

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+
 	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
 	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/query"
 	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
@@ -10,7 +11,7 @@ import (
 // IBaseRepository defines the contract for repository layer that delegates to IUnitOfWork.
 // This provides a clean abstraction for feature repositories and enables dependency injection,
 // mocking, and decoupling from specific persistence implementations.
-// 
+//
 // 🎯 ARCHITECTURE PRINCIPLE: No ID operations exposed - use slug-based operations only
 type IBaseRepository[T types.IBaseModel] interface {
 	// Basic queries
