@@ -3,9 +3,10 @@ package repository
 import (
 	"context"
 
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/query"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
+
 	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 
@@ -17,6 +18,7 @@ type mockUnitOfWork struct {
 	FindAllWithPaginationCalled    bool
 	FindOneCalled                  bool
 	FindOneByIdCalled              bool
+	FindOneBySlugCalled            bool
 	FindOneByIdentifierCalled      bool
 	InsertCalled                   bool
 	UpdateCalled                   bool
@@ -44,6 +46,7 @@ type mockUnitOfWork struct {
 	FindAllWithPaginationCount     int64
 	FindOneResult                  *testutil.TestEntity
 	FindOneByIdResult              *testutil.TestEntity
+	FindOneBySlugResult            *testutil.TestEntity
 	FindOneByIdentifierResult      *testutil.TestEntity
 	InsertResult                   *testutil.TestEntity
 	UpdateResult                   *testutil.TestEntity
@@ -64,6 +67,7 @@ type mockUnitOfWork struct {
 	FindAllWithPaginationError    error
 	FindOneError                  error
 	FindOneByIdError              error
+	FindOneBySlugError            error
 	FindOneByIdentifierError      error
 	InsertError                   error
 	UpdateError                   error
@@ -104,6 +108,11 @@ func (m *mockUnitOfWork) FindOne(ctx context.Context, filter *testutil.TestEntit
 func (m *mockUnitOfWork) FindOneById(ctx context.Context, id int) (*testutil.TestEntity, error) {
 	m.FindOneByIdCalled = true
 	return m.FindOneByIdResult, m.FindOneByIdError
+}
+
+func (m *mockUnitOfWork) FindOneBySlug(ctx context.Context, slug string) (*testutil.TestEntity, error) {
+	m.FindOneBySlugCalled = true
+	return m.FindOneBySlugResult, m.FindOneBySlugError
 }
 
 func (m *mockUnitOfWork) FindOneByIdentifier(ctx context.Context, identifier identifier.IIdentifier) (*testutil.TestEntity, error) {

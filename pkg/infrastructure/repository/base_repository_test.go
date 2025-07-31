@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/query"
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
 	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 

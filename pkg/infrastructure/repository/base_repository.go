@@ -3,10 +3,10 @@ package repository
 import (
 	"context"
 
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/unit_of_work"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/query"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/unit_of_work"
 )
 
 // BaseRepository provides a generic repository implementation that delegates all operations
@@ -43,6 +43,11 @@ func (r *BaseRepository[T]) FindOne(ctx context.Context, filter T) (T, error) {
 // FindOneById retrieves a single entity by its ID
 func (r *BaseRepository[T]) FindOneById(ctx context.Context, id int) (T, error) {
 	return r.uow.FindOneById(ctx, id)
+}
+
+// FindOneBySlug retrieves a single entity by its slug (public identifier)
+func (r *BaseRepository[T]) FindOneBySlug(ctx context.Context, slug string) (T, error) {
+	return r.uow.FindOneBySlug(ctx, slug)
 }
 
 // FindOneByIdentifier retrieves a single entity using the IIdentifier filter system

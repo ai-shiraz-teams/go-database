@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
 )
 
 // TestEntity for testing purposes

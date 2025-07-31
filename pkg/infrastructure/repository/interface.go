@@ -3,20 +3,22 @@ package repository
 import (
 	"context"
 
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/query"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
 )
 
 // IBaseRepository defines the contract for repository layer that delegates to IUnitOfWork.
 // This provides a clean abstraction for feature repositories and enables dependency injection,
 // mocking, and decoupling from specific persistence implementations.
+//
+// 🎯 ARCHITECTURE PRINCIPLE: No ID operations exposed - use slug-based operations only
 type IBaseRepository[T types.IBaseModel] interface {
 	// Basic queries
 	FindAll(ctx context.Context) ([]T, error)
 	FindAllWithPagination(ctx context.Context, query *query.QueryParams[T]) ([]T, int64, error)
 	FindOne(ctx context.Context, filter T) (T, error)
-	FindOneById(ctx context.Context, id int) (T, error)
+	FindOneBySlug(ctx context.Context, slug string) (T, error)
 	FindOneByIdentifier(ctx context.Context, identifier identifier.IIdentifier) (T, error)
 
 	// Mutation operations
