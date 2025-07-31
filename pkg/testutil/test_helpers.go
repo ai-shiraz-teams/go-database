@@ -2,10 +2,10 @@ package testutil
 
 import (
 	"context"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
 	"testing"
-
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -22,6 +22,35 @@ type TestEntity struct {
 	IsActive    bool   `gorm:"column:is_active" json:"is_active"`
 	Description string `gorm:"column:description" json:"description"`
 	Status      string `gorm:"column:status" json:"status"`
+}
+
+func (te *TestEntity) GetID() int {
+	return te.ID
+}
+
+func (te *TestEntity) GetCreatedAt() time.Time {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (te *TestEntity) GetUpdatedAt() time.Time {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (te *TestEntity) GetDeletedAt() *time.Time {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (te *TestEntity) GetVersion() int {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (te *TestEntity) SetVersion(version int) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // TableName returns the table name for GORM

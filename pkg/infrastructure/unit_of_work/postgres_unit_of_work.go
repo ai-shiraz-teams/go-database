@@ -3,11 +3,9 @@ package unit_of_work
 import (
 	"context"
 	"fmt"
-
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/unit_of_work"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/query"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
 
 	"gorm.io/gorm"
 )
@@ -22,7 +20,7 @@ type PostgresUnitOfWork[T types.IBaseModel] struct {
 }
 
 // NewPostgresUnitOfWork creates a new PostgreSQL UnitOfWork instance
-func NewPostgresUnitOfWork[T types.IBaseModel](db *gorm.DB) unit_of_work.IUnitOfWork[T] {
+func NewPostgresUnitOfWork[T types.IBaseModel](db *gorm.DB) IUnitOfWork[T] {
 	return &PostgresUnitOfWork[T]{
 		db:            db,
 		filterApplier: NewFilterApplier(),

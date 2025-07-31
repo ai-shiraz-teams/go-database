@@ -1,8 +1,8 @@
 package query
 
 import (
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
 )
 
 // NewQueryParams creates a new QueryParams instance with sensible defaults

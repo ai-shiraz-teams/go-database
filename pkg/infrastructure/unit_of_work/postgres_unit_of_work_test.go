@@ -2,11 +2,10 @@ package unit_of_work
 
 import (
 	"context"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/query"
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/unit_of_work"
 	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 
@@ -31,19 +30,19 @@ func TestNewPostgresUnitOfWork(t *testing.T) {
 func TestPostgresUnitOfWork_Transaction_Management(t *testing.T) {
 	tests := []struct {
 		name        string
-		setupFunc   func(*testing.T, unit_of_work.IUnitOfWork[*testutil.TestEntity]) error
+		setupFunc   func(*testing.T, IUnitOfWork[*testutil.TestEntity]) error
 		expectError bool
 	}{
 		{
 			name: "Begin transaction successfully",
-			setupFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) error {
+			setupFunc: func(t *testing.T, uow IUnitOfWork[*testutil.TestEntity]) error {
 				return uow.BeginTransaction(context.Background())
 			},
 			expectError: false,
 		},
 		{
 			name: "Fail to begin transaction when already in transaction",
-			setupFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) error {
+			setupFunc: func(t *testing.T, uow IUnitOfWork[*testutil.TestEntity]) error {
 				// Start first transaction
 				if err := uow.BeginTransaction(context.Background()); err != nil {
 					return err
@@ -822,12 +821,12 @@ func TestPostgresUnitOfWork_RestoreAll(t *testing.T) {
 func TestPostgresUnitOfWork_Error_Cases(t *testing.T) {
 	tests := []struct {
 		name        string
-		testFunc    func(*testing.T, unit_of_work.IUnitOfWork[*testutil.TestEntity])
+		testFunc    func(*testing.T, IUnitOfWork[*testutil.TestEntity])
 		expectError bool
 	}{
 		{
 			name: "FindOneById with non-existent ID",
-			testFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) {
+			testFunc: func(t *testing.T, uow IUnitOfWork[*testutil.TestEntity]) {
 				_, err := uow.FindOneById(context.Background(), 99999)
 				if err == nil {
 					t.Error("Expected error for non-existent ID")
@@ -837,7 +836,7 @@ func TestPostgresUnitOfWork_Error_Cases(t *testing.T) {
 		},
 		{
 			name: "Update non-existent entity",
-			testFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) {
+			testFunc: func(t *testing.T, uow IUnitOfWork[*testutil.TestEntity]) {
 				identifierBuilder := identifier.NewIdentifier().Equal("id", 99999)
 				entity := &testutil.TestEntity{Name: "Non-existent"}
 				_, err := uow.Update(context.Background(), identifierBuilder, entity)
@@ -849,7 +848,7 @@ func TestPostgresUnitOfWork_Error_Cases(t *testing.T) {
 		},
 		{
 			name: "SoftDelete non-existent entity",
-			testFunc: func(t *testing.T, uow unit_of_work.IUnitOfWork[*testutil.TestEntity]) {
+			testFunc: func(t *testing.T, uow IUnitOfWork[*testutil.TestEntity]) {
 				identifierBuilder := identifier.NewIdentifier().Equal("id", 99999)
 				_, err := uow.SoftDelete(context.Background(), identifierBuilder)
 				if err == nil {

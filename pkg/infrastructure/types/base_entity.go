@@ -7,11 +7,11 @@ import (
 )
 
 // BaseEntity provides common fields that should be embedded in all domain entities.
-// It follows clean architecture principles and is designed for SDK-level reusability.
-// This struct contains only data and GORM annotations - no business logic.
 type BaseEntity struct {
 	// ID is the primary key for all entities
-	ID int `gorm:"primaryKey" json:"id"`
+	ID int `gorm:"primaryKey" json:"-"`
+
+	Slug string `gorm:"slug;uniqueIndex" json:"slug"`
 
 	// CreatedAt timestamp when the entity was first created
 	CreatedAt time.Time `json:"createdAt"`
@@ -20,11 +20,9 @@ type BaseEntity struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 
 	// DeletedAt enables soft delete functionality (GORM will automatically handle this)
-	// Using gorm.DeletedAt ensures proper GORM soft delete behavior
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt,omitempty"`
 
 	// Version field for optimistic locking support
-	// Default value of 1 ensures proper version tracking from entity creation
 	Version int `gorm:"default:1" json:"version"`
 }
 

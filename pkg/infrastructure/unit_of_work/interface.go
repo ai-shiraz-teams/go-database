@@ -2,25 +2,13 @@ package unit_of_work
 
 import (
 	"context"
-
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/query"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/query"
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
 )
 
 // IUnitOfWork defines the contract for transactional repository access across all modules.
-// It provides a fully generic and reusable abstraction that wraps all database layer access
-// and enforces clean layering with CQRS, soft delete logic, bulk operations, and typed querying.
-//
-// This interface serves as the primary abstraction for repository access and ensures:
-// - Transaction safety for all operations
-// - Type safety through generics
-// - Separation of soft-delete and hard-delete logic
-// - Support for complex filtering via IIdentifier
-// - Pagination and filtering via QueryParams[T]
-// - Bulk operations with explicit semantics
 type IUnitOfWork[T types.IBaseModel] interface {
-	// Transaction management
 	// BeginTransaction starts a new database transaction
 	BeginTransaction(ctx context.Context) error
 
@@ -30,7 +18,6 @@ type IUnitOfWork[T types.IBaseModel] interface {
 	// RollbackTransaction rolls back the current transaction
 	RollbackTransaction(ctx context.Context)
 
-	// Basic queries
 	// FindAll retrieves all entities of type T (excluding soft-deleted by default)
 	FindAll(ctx context.Context) ([]T, error)
 
@@ -46,7 +33,6 @@ type IUnitOfWork[T types.IBaseModel] interface {
 	// FindOneByIdentifier retrieves a single entity using the IIdentifier filter system
 	FindOneByIdentifier(ctx context.Context, identifier identifier.IIdentifier) (T, error)
 
-	// Mutation operations
 	// Insert creates a new entity and returns the created entity with populated fields
 	Insert(ctx context.Context, entity T) (T, error)
 
@@ -56,7 +42,6 @@ type IUnitOfWork[T types.IBaseModel] interface {
 	// Delete performs a logical operation (soft-delete by default, hard-delete if configured)
 	Delete(ctx context.Context, identifier identifier.IIdentifier) error
 
-	// Soft-delete lifecycle management
 	// SoftDelete performs soft deletion by setting DeletedAt timestamp
 	SoftDelete(ctx context.Context, identifier identifier.IIdentifier) (T, error)
 
@@ -75,7 +60,6 @@ type IUnitOfWork[T types.IBaseModel] interface {
 	// RestoreAll recovers all soft-deleted entities of type T
 	RestoreAll(ctx context.Context) error
 
-	// Bulk operations - explicit and efficient for large datasets
 	// BulkInsert creates multiple entities in a single operation
 	BulkInsert(ctx context.Context, entities []T) ([]T, error)
 
@@ -88,7 +72,6 @@ type IUnitOfWork[T types.IBaseModel] interface {
 	// BulkHardDelete permanently removes multiple entities identified by the provided identifiers
 	BulkHardDelete(ctx context.Context, identifiers []identifier.IIdentifier) error
 
-	// Utility operations
 	// ResolveIDByUniqueField finds the ID of an entity by searching a unique field
 	ResolveIDByUniqueField(ctx context.Context, model types.IBaseModel, field string, value interface{}) (int, error)
 
@@ -100,10 +83,6 @@ type IUnitOfWork[T types.IBaseModel] interface {
 }
 
 // IUnitOfWorkFactory defines the contract for creating unit of work instances.
-// This allows for dependency injection and testing with different implementations.
-//
-// Note: Due to Go's limitation with generic interface methods, factory methods
-// should be implemented as standalone functions rather than interface methods.
 type IUnitOfWorkFactory interface {
 	// NewTransaction starts a new database transaction that can be used across multiple unit of work instances
 	NewTransaction(ctx context.Context) (interface{}, error)

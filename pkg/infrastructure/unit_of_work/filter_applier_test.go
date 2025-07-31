@@ -1,9 +1,9 @@
 package unit_of_work
 
 import (
+	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
 	"testing"
 
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
 	"github.com/ai-shiraz-teams/go-database/pkg/testutil"
 )
 
