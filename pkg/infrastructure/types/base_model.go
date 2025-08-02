@@ -7,6 +7,9 @@ type IBaseModel interface {
 	// GetID returns the entity's unique identifier
 	GetID() int
 
+	// GetSlug returns the entity's slug identifier
+	GetSlug() string
+
 	// GetCreatedAt returns when the entity was created
 	GetCreatedAt() time.Time
 

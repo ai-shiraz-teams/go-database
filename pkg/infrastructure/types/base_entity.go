@@ -20,6 +20,10 @@ func (b *BaseEntity) GetID() int {
 	return b.ID
 }
 
+func (b *BaseEntity) GetSlug() string {
+	return b.Slug
+}
+
 func (b *BaseEntity) GetCreatedAt() time.Time {
 	return b.CreatedAt
 }
