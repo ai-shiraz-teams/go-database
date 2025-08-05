@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/identifier"
-	"github.com/ai-shiraz-teams/go-database/pkg/infrastructure/types"
+	"github.com/ai-shiraz-teams/go-database/pkg/domain"
+	"github.com/ai-shiraz-teams/go-database/pkg/identifier"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -17,13 +17,39 @@ import (
 // TestEntity is a unified test entity for all SDK tests.
 // This replaces all duplicate MockEntity, TestEntity, FilterTestEntity across the codebase.
 type TestEntity struct {
-	types.BaseEntity
+	domain.BaseEntity
 	Name        string `gorm:"column:name" json:"name"`
 	Email       string `gorm:"column:email" json:"email"`
 	Age         int    `gorm:"column:age" json:"age"`
 	IsActive    bool   `gorm:"column:is_active" json:"is_active"`
 	Description string `gorm:"column:description" json:"description"`
 	Status      string `gorm:"column:status" json:"status"`
+
+	// Relations for testing recursive filters
+	UserID    int          `gorm:"column:user_id" json:"userId,omitempty"`
+	User      *TestUser    `gorm:"foreignkey:UserID" json:"user,omitempty"`
+	ProfileID int          `gorm:"column:profile_id" json:"profileId,omitempty"`
+	Profile   *TestProfile `gorm:"foreignkey:ProfileID" json:"profile,omitempty"`
+}
+
+// TestUser represents a user entity for testing relations
+type TestUser struct {
+	domain.BaseEntity
+	Username  string       `gorm:"column:username" json:"username"`
+	Email     string       `gorm:"column:email" json:"email"`
+	IsActive  bool         `gorm:"column:is_active" json:"isActive"`
+	ProfileID int          `gorm:"column:profile_id" json:"profileId,omitempty"`
+	Profile   *TestProfile `gorm:"foreignkey:ProfileID" json:"profile,omitempty"`
+}
+
+// TestProfile represents a user profile for testing nested relations
+type TestProfile struct {
+	domain.BaseEntity
+	DisplayName string    `gorm:"column:display_name" json:"displayName"`
+	Bio         string    `gorm:"column:bio" json:"bio"`
+	Verified    bool      `gorm:"column:verified" json:"verified"`
+	Score       int       `gorm:"column:score" json:"score"`
+	CreatedAt   time.Time `gorm:"column:created_at" json:"createdAt"`
 }
 
 func (te *TestEntity) GetID() int {
@@ -60,6 +86,16 @@ func (te *TestEntity) TableName() string {
 	return "test_entities"
 }
 
+// TableName returns the table name for GORM
+func (tu *TestUser) TableName() string {
+	return "test_users"
+}
+
+// TableName returns the table name for GORM
+func (tp *TestProfile) TableName() string {
+	return "test_profiles"
+}
+
 // SetupTestDB creates a standardized in-memory SQLite database for testing.
 // This replaces all duplicate setupTestDB, setupFilterTestDB functions across the codebase.
 func SetupTestDB(t *testing.T) *gorm.DB {
@@ -72,9 +108,9 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("Failed to create test database: %v", err)
 	}
 
-	// Auto-migrate the unified test entity
-	if err := db.AutoMigrate(&TestEntity{}); err != nil {
-		t.Fatalf("Failed to migrate test entity: %v", err)
+	// Auto-migrate the unified test entities
+	if err := db.AutoMigrate(&TestEntity{}, &TestUser{}, &TestProfile{}); err != nil {
+		t.Fatalf("Failed to migrate test entities: %v", err)
 	}
 
 	return db
@@ -89,7 +125,7 @@ func generateUniqueSlug(prefix string) string {
 // NewTestEntity creates a new test entity with a unique slug
 func NewTestEntity(name, status string) *TestEntity {
 	return &TestEntity{
-		BaseEntity: types.BaseEntity{
+		BaseEntity: domain.BaseEntity{
 			Slug: generateUniqueSlug(name),
 		},
 		Name:   name,
@@ -101,7 +137,7 @@ func NewTestEntity(name, status string) *TestEntity {
 func CreateTestEntities() []*TestEntity {
 	return []*TestEntity{
 		{
-			BaseEntity:  types.BaseEntity{ID: 1, Slug: generateUniqueSlug("john-doe")},
+			BaseEntity:  domain.BaseEntity{ID: 1, Slug: generateUniqueSlug("john-doe")},
 			Name:        "John Doe",
 			Email:       "john@example.com",
 			Age:         30,
@@ -110,7 +146,7 @@ func CreateTestEntities() []*TestEntity {
 			Status:      "active",
 		},
 		{
-			BaseEntity:  types.BaseEntity{ID: 2, Slug: generateUniqueSlug("jane-smith")},
+			BaseEntity:  domain.BaseEntity{ID: 2, Slug: generateUniqueSlug("jane-smith")},
 			Name:        "Jane Smith",
 			Email:       "jane@example.com",
 			Age:         25,
@@ -119,7 +155,7 @@ func CreateTestEntities() []*TestEntity {
 			Status:      "inactive",
 		},
 		{
-			BaseEntity:  types.BaseEntity{ID: 3, Slug: generateUniqueSlug("bob-johnson")},
+			BaseEntity:  domain.BaseEntity{ID: 3, Slug: generateUniqueSlug("bob-johnson")},
 			Name:        "Bob Johnson",
 			Email:       "bob@example.com",
 			Age:         35,
@@ -329,7 +365,7 @@ func (m *MockUnitOfWork) RollbackTransaction(ctx context.Context) {
 	m.RollbackTransactionCalled = true
 }
 
-func (m *MockUnitOfWork) ResolveIDByUniqueField(ctx context.Context, model types.IBaseModel, field string, value interface{}) (int, error) {
+func (m *MockUnitOfWork) ResolveIDByUniqueField(ctx context.Context, model domain.IBaseModel, field string, value interface{}) (int, error) {
 	m.ResolveIDByUniqueFieldCalled = true
 	return m.ResolveIDByUniqueFieldResult, m.ResolveIDByUniqueFieldError
 }
