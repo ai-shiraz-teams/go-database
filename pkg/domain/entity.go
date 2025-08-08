@@ -1,9 +1,9 @@
 package domain
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -54,8 +54,7 @@ func (b *BaseEntity) SetVersion(version int) {
 
 func (b *BaseEntity) BeforeCreate(tx *gorm.DB) error {
 	if b.Slug == "" {
-
-		b.Slug = fmt.Sprintf("entity-%d", time.Now().UnixNano())
+		b.Slug = uuid.New().String()
 	}
 	return nil
 }

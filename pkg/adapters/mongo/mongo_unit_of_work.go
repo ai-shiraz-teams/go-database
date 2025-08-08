@@ -81,7 +81,7 @@ func (uow *MongoUnitOfWork[T]) CommitTransaction(ctx context.Context) error {
 
 func (uow *MongoUnitOfWork[T]) RollbackTransaction(ctx context.Context) {
 	if uow.session != nil {
-		_ = uow.session.AbortTransaction(ctx) // Ignore error as this is a cleanup operation
+		_ = uow.session.AbortTransaction(ctx)
 		uow.session.EndSession(ctx)
 		uow.session = nil
 	}
@@ -120,10 +120,10 @@ func (uow *MongoUnitOfWork[T]) FindAllWithArchived(ctx context.Context, withArch
 
 	var filter bson.M
 	if withArchived {
-		// Include all entities (both archived and non-archived)
+
 		filter = bson.M{}
 	} else {
-		// Default behavior: only non-archived entities
+
 		filter = bson.M{"deleted_at": bson.M{"$exists": false}}
 	}
 
@@ -155,7 +155,6 @@ func (uow *MongoUnitOfWork[T]) FindAllWithPagination(ctx context.Context, queryP
 
 	queryParams.PrepareDefaults()
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
@@ -165,7 +164,7 @@ func (uow *MongoUnitOfWork[T]) FindAllWithPagination(ctx context.Context, queryP
 	}
 
 	findOptions := options.Find()
-	// Convert 1-based Offset to 0-based for MongoDB: Offset=1 means page 1 (start at 0), Offset=2 means page 2 (start at Limit)
+
 	mongoSkip := int64(0)
 	if queryParams.Offset() > 1 {
 		mongoSkip = int64((queryParams.Offset() - 1) * queryParams.Limit())
@@ -210,10 +209,8 @@ func (uow *MongoUnitOfWork[T]) FindAllWithPaginationAndArchived(ctx context.Cont
 	}
 	queryParams.PrepareDefaults()
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 
-	// Apply withArchived logic by temporarily overriding the query parameter
 	originalIncludeDeleted := queryParams.GetIncludeDeleted()
 	if withArchived {
 		queryParams = queryParams.WithDeletedVisibility(true, queryParams.GetOnlyDeleted())
@@ -221,17 +218,15 @@ func (uow *MongoUnitOfWork[T]) FindAllWithPaginationAndArchived(ctx context.Cont
 
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
-	// Restore original value
 	queryParams = queryParams.WithDeletedVisibility(originalIncludeDeleted, queryParams.GetOnlyDeleted())
 
-	// Count total documents matching the filter
 	total, err := collection.CountDocuments(sessionCtx, filter)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	findOptions := options.Find()
-	// Convert 1-based Offset to 0-based for MongoDB: Offset=1 means page 1 (start at 0), Offset=2 means page 2 (start at Limit)
+
 	mongoSkip := int64(0)
 	if queryParams.Offset() > 1 {
 		mongoSkip = int64((queryParams.Offset() - 1) * queryParams.Limit())
@@ -276,7 +271,6 @@ func (uow *MongoUnitOfWork[T]) FindOne(ctx context.Context, filter T, includeDel
 		return zero, err
 	}
 
-	// Apply soft-delete filtering based on includeDeleted flag
 	if !includeDeleted {
 		filterDoc["deleted_at"] = bson.M{"$exists": false}
 	}
@@ -346,7 +340,6 @@ func (uow *MongoUnitOfWork[T]) FindOneByIdentifier(ctx context.Context, identifi
 	return entity, nil
 }
 
-// WithArchived methods implementation for MongoDB
 func (uow *MongoUnitOfWork[T]) FindOneWithArchived(ctx context.Context, filter T, withArchived bool) (T, error) {
 	collection := uow.getCollection()
 	sessionCtx := uow.getSessionContext(ctx)
@@ -358,10 +351,9 @@ func (uow *MongoUnitOfWork[T]) FindOneWithArchived(ctx context.Context, filter T
 	}
 
 	if !withArchived {
-		// Only include non-archived entities
+
 		filterDoc["deleted_at"] = bson.M{"$exists": false}
 	}
-	// If withArchived is true, don't add any deleted_at filter (include all)
 
 	var entity T
 	err = collection.FindOne(sessionCtx, filterDoc).Decode(&entity)
@@ -801,28 +793,17 @@ func (uow *MongoUnitOfWork[T]) setObjectID(entity T) {
 	}
 }
 
-// ========================
-// 🔁 Transaction Management (Additional)
-// ========================
-
 func (uow *MongoUnitOfWork[T]) IsInTransaction() bool {
 	return uow.session != nil
 }
 
-// ========================
-// 🧩 Entity Linking & Relations
-// ========================
-
 func (uow *MongoUnitOfWork[T]) Connect(ctx context.Context, parentEntity T, relationField string, childEntity domain.IBaseModel) error {
-	// In MongoDB, relationships are typically embedded or referenced
-	// This implementation uses embedded approach for simplicity
+
 	collection := uow.getCollection()
 	sessionCtx := uow.getSessionContext(ctx)
 
-	// Find parent document
 	filter := bson.M{"id": parentEntity.GetID(), "deleted_at": bson.M{"$exists": false}}
 
-	// Create update document to embed child entity in relation field
 	update := bson.M{
 		"$set": bson.M{
 			relationField: childEntity,
@@ -835,8 +816,8 @@ func (uow *MongoUnitOfWork[T]) Connect(ctx context.Context, parentEntity T, rela
 }
 
 func (uow *MongoUnitOfWork[T]) ConnectByIdentifier(ctx context.Context, parentIdentifier identifier.IIdentifier, relationField string, childIdentifier identifier.IIdentifier) error {
-	// First find the child entity
-	childCollection := uow.database.Collection(uow.collectionName) // Assuming same collection for simplicity
+
+	childCollection := uow.database.Collection(uow.collectionName)
 	childFilter := uow.filterApplier.BuildFilterFromIdentifier(childIdentifier)
 	childFilter["deleted_at"] = bson.M{"$exists": false}
 
@@ -847,7 +828,6 @@ func (uow *MongoUnitOfWork[T]) ConnectByIdentifier(ctx context.Context, parentId
 		return err
 	}
 
-	// Now update parent with child reference
 	collection := uow.getCollection()
 	parentFilter := uow.filterApplier.BuildFilterFromIdentifier(parentIdentifier)
 	parentFilter["deleted_at"] = bson.M{"$exists": false}
@@ -864,11 +844,10 @@ func (uow *MongoUnitOfWork[T]) ConnectByIdentifier(ctx context.Context, parentId
 }
 
 func (uow *MongoUnitOfWork[T]) CreateRelation(ctx context.Context, parentIdentifier identifier.IIdentifier, relationField string, childEntity domain.IBaseModel) (domain.IBaseModel, error) {
-	// First create the child entity
-	childCollection := uow.database.Collection(uow.collectionName) // Assuming same collection for simplicity
+
+	childCollection := uow.database.Collection(uow.collectionName)
 	sessionCtx := uow.getSessionContext(ctx)
 
-	// Set timestamps and ObjectID for child
 	uow.setTimestampsForInterface(childEntity, true, false)
 	uow.setObjectIDForInterface(childEntity)
 
@@ -877,7 +856,6 @@ func (uow *MongoUnitOfWork[T]) CreateRelation(ctx context.Context, parentIdentif
 		return nil, err
 	}
 
-	// Now connect it to parent
 	childIdentifier := identifier.NewIdentifier().Equal("id", childEntity.GetID())
 	err = uow.ConnectByIdentifier(ctx, parentIdentifier, relationField, childIdentifier)
 	if err != nil {
@@ -888,7 +866,7 @@ func (uow *MongoUnitOfWork[T]) CreateRelation(ctx context.Context, parentIdentif
 }
 
 func (uow *MongoUnitOfWork[T]) ConnectOrCreateRelation(ctx context.Context, parentIdentifier identifier.IIdentifier, relationField string, childEntity domain.IBaseModel) (domain.IBaseModel, error) {
-	// Try to find existing child entity
+
 	childCollection := uow.database.Collection(uow.collectionName)
 	sessionCtx := uow.getSessionContext(ctx)
 
@@ -897,13 +875,12 @@ func (uow *MongoUnitOfWork[T]) ConnectOrCreateRelation(ctx context.Context, pare
 	err := childCollection.FindOne(sessionCtx, filter).Decode(&existingChild)
 
 	if err == mongo.ErrNoDocuments {
-		// Child doesn't exist, create it
+
 		return uow.CreateRelation(ctx, parentIdentifier, relationField, childEntity)
 	} else if err != nil {
 		return nil, err
 	}
 
-	// Child exists, just connect it
 	childIdentifier := identifier.NewIdentifier().Equal("id", existingChild.GetID())
 	err = uow.ConnectByIdentifier(ctx, parentIdentifier, relationField, childIdentifier)
 	if err != nil {
@@ -912,10 +889,6 @@ func (uow *MongoUnitOfWork[T]) ConnectOrCreateRelation(ctx context.Context, pare
 
 	return existingChild, nil
 }
-
-// ========================
-// 📄 Retrieval (Extended)
-// ========================
 
 func (uow *MongoUnitOfWork[T]) FindAllByQuery(ctx context.Context, queryParams domain.IQueryParams[T]) ([]T, error) {
 	collection := uow.getCollection()
@@ -926,13 +899,12 @@ func (uow *MongoUnitOfWork[T]) FindAllByQuery(ctx context.Context, queryParams d
 	}
 	queryParams.PrepareDefaults()
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
 	findOptions := options.Find()
 	if queryParams.Limit() > 0 {
-		// Convert 1-based Offset to 0-based for MongoDB: Offset=1 means page 1 (start at 0), Offset=2 means page 2 (start at Limit)
+
 		mongoSkip := int64(0)
 		if queryParams.Offset() > 1 {
 			mongoSkip = int64((queryParams.Offset() - 1) * queryParams.Limit())
@@ -972,7 +944,6 @@ func (uow *MongoUnitOfWork[T]) FindFirst(ctx context.Context, queryParams domain
 		queryParams = domain.NewQueryParams[T]()
 	}
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
@@ -993,15 +964,13 @@ func (uow *MongoUnitOfWork[T]) FindFirst(ctx context.Context, queryParams domain
 }
 
 func (uow *MongoUnitOfWork[T]) FindManyRaw(ctx context.Context, rawQuery string, args ...interface{}) ([]T, error) {
-	// For MongoDB, we need to parse the raw query as BSON
-	// This is a simplified implementation - in practice, you might want more sophisticated parsing
+
 	collection := uow.getCollection()
 	sessionCtx := uow.getSessionContext(ctx)
 
-	// Attempt to parse rawQuery as BSON
 	var filter bson.M
 	if err := bson.UnmarshalExtJSON([]byte(rawQuery), true, &filter); err != nil {
-		// If parsing fails, treat as MongoDB shell-style query
+
 		filter = bson.M{"$where": rawQuery}
 	}
 
@@ -1023,10 +992,6 @@ func (uow *MongoUnitOfWork[T]) FindManyRaw(ctx context.Context, rawQuery string,
 	return entities, cursor.Err()
 }
 
-// ========================
-// 🔍 Projections & Filters
-// ========================
-
 func (uow *MongoUnitOfWork[T]) FindOneWithProjection(ctx context.Context, identifier identifier.IIdentifier, fields []string) (map[string]interface{}, error) {
 	collection := uow.getCollection()
 	sessionCtx := uow.getSessionContext(ctx)
@@ -1034,7 +999,6 @@ func (uow *MongoUnitOfWork[T]) FindOneWithProjection(ctx context.Context, identi
 	filter := uow.filterApplier.BuildFilterFromIdentifier(identifier)
 	filter["deleted_at"] = bson.M{"$exists": false}
 
-	// Build projection document
 	projection := bson.M{}
 	for _, field := range fields {
 		projection[field] = 1
@@ -1060,11 +1024,9 @@ func (uow *MongoUnitOfWork[T]) FindAllWithProjection(ctx context.Context, queryP
 	}
 	queryParams.PrepareDefaults()
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
-	// Build projection document
 	projection := bson.M{}
 	for _, field := range fields {
 		projection[field] = 1
@@ -1072,7 +1034,7 @@ func (uow *MongoUnitOfWork[T]) FindAllWithProjection(ctx context.Context, queryP
 
 	findOptions := options.Find().SetProjection(projection)
 	if queryParams.Limit() > 0 {
-		// Convert 1-based Offset to 0-based for MongoDB: Offset=1 means page 1 (start at 0), Offset=2 means page 2 (start at Limit)
+
 		mongoSkip := int64(0)
 		if queryParams.Offset() > 1 {
 			mongoSkip = int64((queryParams.Offset() - 1) * queryParams.Limit())
@@ -1104,7 +1066,6 @@ func (uow *MongoUnitOfWork[T]) FindAllWithProjection(ctx context.Context, queryP
 	return results, cursor.Err()
 }
 
-// Additional withArchived query methods for MongoDB
 func (uow *MongoUnitOfWork[T]) FindAllByQueryWithArchived(ctx context.Context, queryParams domain.IQueryParams[T], withArchived bool) ([]T, error) {
 	collection := uow.getCollection()
 	sessionCtx := uow.getSessionContext(ctx)
@@ -1113,10 +1074,8 @@ func (uow *MongoUnitOfWork[T]) FindAllByQueryWithArchived(ctx context.Context, q
 		queryParams = domain.NewQueryParams[T]()
 	}
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 
-	// Apply withArchived logic by temporarily overriding the query parameter
 	originalIncludeDeleted := queryParams.GetIncludeDeleted()
 	if withArchived {
 		queryParams = queryParams.WithDeletedVisibility(true, queryParams.GetOnlyDeleted())
@@ -1124,7 +1083,6 @@ func (uow *MongoUnitOfWork[T]) FindAllByQueryWithArchived(ctx context.Context, q
 
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
-	// Restore original value
 	queryParams = queryParams.WithDeletedVisibility(originalIncludeDeleted, queryParams.GetOnlyDeleted())
 
 	findOptions := options.Find()
@@ -1160,10 +1118,8 @@ func (uow *MongoUnitOfWork[T]) FindFirstWithArchived(ctx context.Context, queryP
 		queryParams = domain.NewQueryParams[T]()
 	}
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 
-	// Apply withArchived logic by temporarily overriding the query parameter
 	originalIncludeDeleted := queryParams.GetIncludeDeleted()
 	if withArchived {
 		queryParams = queryParams.WithDeletedVisibility(true, queryParams.GetOnlyDeleted())
@@ -1171,7 +1127,6 @@ func (uow *MongoUnitOfWork[T]) FindFirstWithArchived(ctx context.Context, queryP
 
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
-	// Restore original value
 	queryParams = queryParams.WithDeletedVisibility(originalIncludeDeleted, queryParams.GetOnlyDeleted())
 
 	findOptions := options.FindOne()
@@ -1226,10 +1181,8 @@ func (uow *MongoUnitOfWork[T]) FindAllWithProjectionAndArchived(ctx context.Cont
 		queryParams = domain.NewQueryParams[T]()
 	}
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 
-	// Apply withArchived logic by temporarily overriding the query parameter
 	originalIncludeDeleted := queryParams.GetIncludeDeleted()
 	if withArchived {
 		queryParams = queryParams.WithDeletedVisibility(true, queryParams.GetOnlyDeleted())
@@ -1237,7 +1190,6 @@ func (uow *MongoUnitOfWork[T]) FindAllWithProjectionAndArchived(ctx context.Cont
 
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
-	// Restore original value
 	queryParams = queryParams.WithDeletedVisibility(originalIncludeDeleted, queryParams.GetOnlyDeleted())
 
 	findOptions := options.Find()
@@ -1284,7 +1236,6 @@ func (uow *MongoUnitOfWork[T]) CountDistinct(ctx context.Context, field string, 
 	filter := bson.M{"deleted_at": bson.M{"$exists": false}}
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
-	// Use aggregation pipeline for distinct count
 	pipeline := []bson.M{
 		{"$match": filter},
 		{"$group": bson.M{
@@ -1315,15 +1266,10 @@ func (uow *MongoUnitOfWork[T]) CountDistinct(ctx context.Context, field string, 
 	return 0, fmt.Errorf("unexpected result format from distinct count aggregation")
 }
 
-// ========================
-// 📥 Create / Insert (Extended)
-// ========================
-
 func (uow *MongoUnitOfWork[T]) Upsert(ctx context.Context, entity T, conflictFields []string) (T, error) {
 	collection := uow.getCollection()
 	sessionCtx := uow.getSessionContext(ctx)
 
-	// Build filter based on conflict fields
 	filter := bson.M{"deleted_at": bson.M{"$exists": false}}
 
 	v := reflect.ValueOf(entity)
@@ -1352,7 +1298,7 @@ func (uow *MongoUnitOfWork[T]) Upsert(ctx context.Context, entity T, conflictFie
 		}
 	}
 
-	uow.setTimestamps(entity, true, true) // Set both created and updated timestamps
+	uow.setTimestamps(entity, true, true)
 
 	upsertOptions := options.Replace().SetUpsert(true)
 	_, err := collection.ReplaceOne(sessionCtx, filter, entity, upsertOptions)
@@ -1381,12 +1327,8 @@ func (uow *MongoUnitOfWork[T]) BulkUpsert(ctx context.Context, entities []T, con
 	return result, nil
 }
 
-// ========================
-// 🛠 Update (Extended)
-// ========================
-
 func (uow *MongoUnitOfWork[T]) UpdatePartial(ctx context.Context, identifier identifier.IIdentifier, updates map[string]interface{}) (T, error) {
-	// First find the entity to ensure it exists
+
 	_, err := uow.FindOneByIdentifier(ctx, identifier)
 	if err != nil {
 		var zero T
@@ -1399,7 +1341,6 @@ func (uow *MongoUnitOfWork[T]) UpdatePartial(ctx context.Context, identifier ide
 	filter := uow.filterApplier.BuildFilterFromIdentifier(identifier)
 	filter["deleted_at"] = bson.M{"$exists": false}
 
-	// Add updated timestamp
 	updates["updated_at"] = time.Now()
 
 	updateDoc := bson.M{"$set": updates}
@@ -1409,7 +1350,6 @@ func (uow *MongoUnitOfWork[T]) UpdatePartial(ctx context.Context, identifier ide
 		return zero, err
 	}
 
-	// Return updated entity
 	return uow.FindOneByIdentifier(ctx, identifier)
 }
 
@@ -1426,7 +1366,6 @@ func (uow *MongoUnitOfWork[T]) BulkUpdatePartial(ctx context.Context, updates []
 		filter := uow.filterApplier.BuildFilterFromIdentifier(update.Identifier)
 		filter["deleted_at"] = bson.M{"$exists": false}
 
-		// Add updated timestamp
 		update.Updates["updated_at"] = time.Now()
 
 		updateDoc := bson.M{"$set": update.Updates}
@@ -1437,17 +1376,12 @@ func (uow *MongoUnitOfWork[T]) BulkUpdatePartial(ctx context.Context, updates []
 			result.FailureCount++
 		} else if updateResult.ModifiedCount > 0 {
 			result.SuccessCount++
-			// Note: In a real implementation, you might want to extract ID from the identifier
-			// but this requires knowing the specific identifier implementation
+
 		}
 	}
 
 	return result, nil
 }
-
-// ========================
-// 🧹 Deletion (Extended)
-// ========================
 
 func (uow *MongoUnitOfWork[T]) DeleteAll(ctx context.Context, queryParams domain.IQueryParams[T], hardDelete bool) (domain.BulkOperationResult, error) {
 	collection := uow.getCollection()
@@ -1466,7 +1400,7 @@ func (uow *MongoUnitOfWork[T]) DeleteAll(ctx context.Context, queryParams domain
 	}
 
 	if hardDelete {
-		// Hard delete - permanently remove documents
+
 		deleteResult, err := collection.DeleteMany(sessionCtx, filter)
 		if err != nil {
 			result.Errors = append(result.Errors, err)
@@ -1475,7 +1409,7 @@ func (uow *MongoUnitOfWork[T]) DeleteAll(ctx context.Context, queryParams domain
 			result.SuccessCount = int(deleteResult.DeletedCount)
 		}
 	} else {
-		// Soft delete - set deleted_at timestamp
+
 		updateDoc := bson.M{"$set": bson.M{"deleted_at": time.Now()}}
 		updateResult, err := collection.UpdateMany(sessionCtx, filter, updateDoc)
 		if err != nil {
@@ -1510,17 +1444,12 @@ func (uow *MongoUnitOfWork[T]) BulkRestore(ctx context.Context, identifiers []id
 			result.FailureCount++
 		} else if updateResult.ModifiedCount > 0 {
 			result.SuccessCount++
-			// Note: In a real implementation, you might want to extract ID from the identifier
-			// but this requires knowing the specific identifier implementation
+
 		}
 	}
 
 	return result, nil
 }
-
-// ========================
-// 🗑 Trash Views (Extended)
-// ========================
 
 func (uow *MongoUnitOfWork[T]) GetTrashedByQuery(ctx context.Context, queryParams domain.IQueryParams[T]) ([]T, error) {
 	collection := uow.getCollection()
@@ -1536,7 +1465,7 @@ func (uow *MongoUnitOfWork[T]) GetTrashedByQuery(ctx context.Context, queryParam
 
 	findOptions := options.Find()
 	if queryParams.Limit() > 0 {
-		// Convert 1-based Offset to 0-based for MongoDB: Offset=1 means page 1 (start at 0), Offset=2 means page 2 (start at Limit)
+
 		mongoSkip := int64(0)
 		if queryParams.Offset() > 1 {
 			mongoSkip = int64((queryParams.Offset() - 1) * queryParams.Limit())
@@ -1568,10 +1497,6 @@ func (uow *MongoUnitOfWork[T]) GetTrashedByQuery(ctx context.Context, queryParam
 	return entities, cursor.Err()
 }
 
-// ========================
-// 🔧 Utility Operations (Extended)
-// ========================
-
 func (uow *MongoUnitOfWork[T]) ExistsWithQuery(ctx context.Context, queryParams domain.IQueryParams[T]) (bool, error) {
 	collection := uow.getCollection()
 	sessionCtx := uow.getSessionContext(ctx)
@@ -1580,7 +1505,6 @@ func (uow *MongoUnitOfWork[T]) ExistsWithQuery(ctx context.Context, queryParams 
 		queryParams = domain.NewQueryParams[T]()
 	}
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
@@ -1600,7 +1524,6 @@ func (uow *MongoUnitOfWork[T]) GetDistinctValues(ctx context.Context, field stri
 		queryParams = domain.NewQueryParams[T]()
 	}
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
@@ -1638,7 +1561,7 @@ func (uow *MongoUnitOfWork[T]) Aggregate(ctx context.Context, operation domain.A
 	case domain.AggregateStdDev:
 		groupStage = bson.M{"_id": nil, "result": bson.M{"$stdDevPop": "$" + field}}
 	case domain.AggregateVariance:
-		// MongoDB doesn't have direct variance, but we can calculate it using stdDev
+
 		groupStage = bson.M{"_id": nil, "stddev": bson.M{"$stdDevPop": "$" + field}}
 	default:
 		return nil, fmt.Errorf("unsupported aggregate operation: %s", operation)
@@ -1667,7 +1590,7 @@ func (uow *MongoUnitOfWork[T]) Aggregate(ctx context.Context, operation domain.A
 	result := results[0]
 
 	if operation == domain.AggregateVariance {
-		// Calculate variance from standard deviation (variance = stddev^2)
+
 		if stddev, ok := result["stddev"].(float64); ok {
 			return stddev * stddev, nil
 		}
@@ -1677,10 +1600,6 @@ func (uow *MongoUnitOfWork[T]) Aggregate(ctx context.Context, operation domain.A
 	return result["result"], nil
 }
 
-// ========================
-// 📊 Performance & Streaming
-// ========================
-
 func (uow *MongoUnitOfWork[T]) FindAllStream(ctx context.Context, queryParams domain.IQueryParams[T], batchSize int) (<-chan domain.StreamResult[T], error) {
 	collection := uow.getCollection()
 	sessionCtx := uow.getSessionContext(ctx)
@@ -1689,7 +1608,6 @@ func (uow *MongoUnitOfWork[T]) FindAllStream(ctx context.Context, queryParams do
 		queryParams = domain.NewQueryParams[T]()
 	}
 
-	// Start with empty base filter - let ApplyQueryParams handle soft-delete logic
 	filter := bson.M{}
 	filter = uow.filterApplier.ApplyQueryParams(filter, queryParams)
 
@@ -1763,11 +1681,10 @@ func (uow *MongoUnitOfWork[T]) ExecuteInBatches(ctx context.Context, queryParams
 			if err := processor(batch); err != nil {
 				return err
 			}
-			batch = batch[:0] // Reset slice but keep capacity
+			batch = batch[:0]
 		}
 	}
 
-	// Process remaining items in final batch
 	if len(batch) > 0 {
 		if err := processor(batch); err != nil {
 			return err
@@ -1778,14 +1695,9 @@ func (uow *MongoUnitOfWork[T]) ExecuteInBatches(ctx context.Context, queryParams
 }
 
 func (uow *MongoUnitOfWork[T]) RefreshCache(ctx context.Context) error {
-	// MongoDB doesn't have built-in caching like some ORMs
-	// This implementation is a no-op, but could be extended to work with external caching layers
+
 	return nil
 }
-
-// ========================
-// 🔧 Helper Methods for Interface Support
-// ========================
 
 func (uow *MongoUnitOfWork[T]) setTimestampsForInterface(entity domain.IBaseModel, isCreate bool, isUpdate bool) {
 	v := reflect.ValueOf(entity)

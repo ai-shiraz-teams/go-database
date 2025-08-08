@@ -10,7 +10,7 @@ import (
 )
 
 func TestQueryParamsLiteral_ObjectConstruction(t *testing.T) {
-	// Test object literal construction
+
 	literal := QueryParamsLiteral[*testutil.TestEntity]{
 		Filter: FilterLiteral[*testutil.TestEntity]{
 			"name": FilterOperatorLiteralValue[*testutil.TestEntity, string]{
@@ -34,13 +34,11 @@ func TestQueryParamsLiteral_ObjectConstruction(t *testing.T) {
 		Offset: 0,
 	}
 
-	// Convert to QueryParams
 	qp, err := literal.ToQueryParams()
 	if err != nil {
 		t.Fatalf("Failed to convert literal to QueryParams: %v", err)
 	}
 
-	// Verify basic properties
 	if qp.Limit() != 10 {
 		t.Errorf("Expected limit 10, got %d", qp.Limit())
 	}
@@ -49,17 +47,15 @@ func TestQueryParamsLiteral_ObjectConstruction(t *testing.T) {
 		t.Errorf("Expected offset 0, got %d", qp.Offset())
 	}
 
-	// Verify filters
 	if !qp.HasFilters() {
 		t.Error("Expected HasFilters() to be true")
 	}
 
 	criteria := qp.ToFilterCriteria()
-	if len(criteria) != 4 { // name contains, age gte, age lte, IsActive eq
+	if len(criteria) != 4 {
 		t.Errorf("Expected 4 filter criteria, got %d", len(criteria))
 	}
 
-	// Verify sort
 	if !qp.HasSort() {
 		t.Error("Expected HasSort() to be true")
 	}
@@ -71,7 +67,7 @@ func TestQueryParamsLiteral_ObjectConstruction(t *testing.T) {
 }
 
 func TestFilterLiteral_DirectValueComparison(t *testing.T) {
-	// Test direct value assignment (equals comparison)
+
 	literal := QueryParamsLiteral[*testutil.TestEntity]{
 		Filter: FilterLiteral[*testutil.TestEntity]{
 			"name":     DirectFilterValue[string]{Value: "John Doe"},
@@ -90,7 +86,6 @@ func TestFilterLiteral_DirectValueComparison(t *testing.T) {
 		t.Errorf("Expected 3 filter criteria, got %d", len(criteria))
 	}
 
-	// All should be equality comparisons
 	for _, c := range criteria {
 		if c.Operator != domain.FilterOperatorEqual {
 			t.Errorf("Expected all operators to be Equal, got %s for field %s", c.Operator, c.Field)
@@ -272,7 +267,6 @@ func TestSortLiteral_MultipleSortFields(t *testing.T) {
 		t.Errorf("Expected 4 sort fields, got %d", len(sortFields))
 	}
 
-	// Verify each sort field (order may vary due to map iteration)
 	fieldCount := make(map[string]domain.SortOrder)
 	for _, sf := range sortFields {
 		fieldCount[sf.Field] = sf.Order
@@ -293,7 +287,7 @@ func TestSortLiteral_MultipleSortFields(t *testing.T) {
 }
 
 func TestBuilder_FluentAPI(t *testing.T) {
-	// Test fluent API builder using the literal approach since the builder API is still incomplete
+
 	literal := QueryParamsLiteral[*testutil.TestEntity]{
 		Filter: FilterLiteral[*testutil.TestEntity]{
 			"name": FilterOperatorLiteralValue[*testutil.TestEntity, string]{
@@ -321,7 +315,7 @@ func TestBuilder_FluentAPI(t *testing.T) {
 }
 
 func TestStronglyTypedFilter_FluentAPI(t *testing.T) {
-	// Test the strongly typed filter builder using the literal approach
+
 	literal := QueryParamsLiteral[*testutil.TestEntity]{
 		Filter: FilterLiteral[*testutil.TestEntity]{
 			"name": FilterOperatorLiteralValue[*testutil.TestEntity, string]{
@@ -348,7 +342,6 @@ func TestStronglyTypedFilter_FluentAPI(t *testing.T) {
 		t.Errorf("Expected at least 2 filter criteria, got %d", len(criteria))
 	}
 
-	// Test clone
 	cloned := filter.Clone()
 	if cloned == nil || cloned.IsEmpty() {
 		t.Error("Expected cloned filter to not be empty")
@@ -363,13 +356,11 @@ func TestStronglyTypedFilter_FluentAPI(t *testing.T) {
 func TestTypeRegistry_Registration(t *testing.T) {
 	registry := NewTypeRegistry()
 
-	// Test type registration
 	err := registry.RegisterType(&testutil.TestEntity{})
 	if err != nil {
 		t.Fatalf("Failed to register type: %v", err)
 	}
 
-	// Test field info retrieval
 	entityType := reflect.TypeOf(&testutil.TestEntity{}).Elem()
 	fieldInfo, err := registry.GetFieldInfo(entityType, "name")
 	if err != nil {
@@ -380,7 +371,6 @@ func TestTypeRegistry_Registration(t *testing.T) {
 		t.Errorf("Expected field name 'Name', got '%s'", fieldInfo.Name)
 	}
 
-	// Test validation
 	_, err = registry.ValidateFieldPath(entityType, "name")
 	if err != nil {
 		t.Errorf("Field validation should pass for 'name': %v", err)
@@ -393,13 +383,11 @@ func TestTypeRegistry_Registration(t *testing.T) {
 }
 
 func TestQueryParams_InterfaceCompliance(t *testing.T) {
-	// Test that QueryParams implements domain.IQueryParams
+
 	var _ domain.IQueryParams[*testutil.TestEntity] = &QueryParams[*testutil.TestEntity]{}
 
-	// Test that QueryParams implements QueryParamsType
 	var _ QueryParamsType[*testutil.TestEntity] = &QueryParams[*testutil.TestEntity]{}
 
-	// Create a QueryParams instance and test interface methods
 	qp := &QueryParams[*testutil.TestEntity]{
 		limit:  25,
 		offset: 10,
@@ -413,7 +401,6 @@ func TestQueryParams_InterfaceCompliance(t *testing.T) {
 		t.Errorf("Expected offset 10, got %d", qp.Offset())
 	}
 
-	// Test fluent methods return the same instance
 	result := qp.WithLimit(50)
 	if result != qp {
 		t.Error("WithLimit should return the same instance")
@@ -425,7 +412,7 @@ func TestQueryParams_InterfaceCompliance(t *testing.T) {
 }
 
 func TestHelperFunctions(t *testing.T) {
-	// Test helper functions for filter operators
+
 	eqOp := Eq("test")
 	if eqOp.Eq == nil || *eqOp.Eq != "test" {
 		t.Error("Eq helper function not working correctly")
@@ -458,28 +445,24 @@ func TestHelperFunctions(t *testing.T) {
 }
 
 func TestQueryParamsType_UnionType(t *testing.T) {
-	// Test that both QueryParams and the interface work as QueryParamsType
+
 	registry := NewTypeRegistry()
 	err := registry.RegisterType(&testutil.TestEntity{})
 	if err != nil {
 		t.Fatalf("Failed to register type: %v", err)
 	}
 
-	// Test QueryParams as QueryParamsType
 	qp := &QueryParams[*testutil.TestEntity]{limit: 10}
 	var _ QueryParamsType[*testutil.TestEntity] = qp
 
-	// Test domain.IQueryParams as QueryParamsType (through interface)
 	var domainQP domain.IQueryParams[*testutil.TestEntity] = qp
 	var _ QueryParamsType[*testutil.TestEntity] = domainQP.(QueryParamsType[*testutil.TestEntity])
 
-	// Verify functionality
 	if qp.Limit() != 10 {
 		t.Errorf("Expected limit 10, got %d", qp.Limit())
 	}
 }
 
-// Helper functions for pointer values
 func StringPtr(s string) *string     { return &s }
 func IntPtr(i int) *int              { return &i }
 func BoolPtr(b bool) *bool           { return &b }

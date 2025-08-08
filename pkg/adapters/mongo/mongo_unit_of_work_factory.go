@@ -8,13 +8,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// MongoUnitOfWorkFactory provides MongoDB-based implementation of IUnitOfWorkFactory
 type MongoUnitOfWorkFactory struct {
 	client       *mongo.Client
 	databaseName string
 }
 
-// NewMongoUnitOfWorkFactory creates a new MongoDB Unit of Work factory
 func NewMongoUnitOfWorkFactory(client *mongo.Client, databaseName string) domain.IUnitOfWorkFactory {
 	return &MongoUnitOfWorkFactory{
 		client:       client,
@@ -22,7 +20,6 @@ func NewMongoUnitOfWorkFactory(client *mongo.Client, databaseName string) domain
 	}
 }
 
-// NewTransaction starts a new MongoDB session for transaction support
 func (f *MongoUnitOfWorkFactory) NewTransaction(ctx context.Context) (interface{}, error) {
 	session, err := f.client.StartSession()
 	if err != nil {
@@ -38,7 +35,6 @@ func (f *MongoUnitOfWorkFactory) NewTransaction(ctx context.Context) (interface{
 	return session, nil
 }
 
-// CommitTransaction commits the provided MongoDB session
 func (f *MongoUnitOfWorkFactory) CommitTransaction(ctx context.Context, tx interface{}) error {
 	session, ok := tx.(mongo.Session)
 	if !ok {
@@ -50,7 +46,6 @@ func (f *MongoUnitOfWorkFactory) CommitTransaction(ctx context.Context, tx inter
 	return err
 }
 
-// RollbackTransaction aborts the provided MongoDB session
 func (f *MongoUnitOfWorkFactory) RollbackTransaction(ctx context.Context, tx interface{}) error {
 	session, ok := tx.(mongo.Session)
 	if !ok {

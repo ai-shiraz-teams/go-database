@@ -18,7 +18,6 @@ type CategoryEntity struct {
 }
 
 func TestQueryParamsType_SimpleTest(t *testing.T) {
-	// Simple test to check if the basic structure compiles
 	literal := QueryParamsLiteral[*CategoryEntity]{
 		Filter: FilterLiteral[*CategoryEntity]{
 			"name": DirectFilterValue[string]{Value: "test"},
@@ -27,7 +26,6 @@ func TestQueryParamsType_SimpleTest(t *testing.T) {
 		Offset: 0,
 	}
 
-	// Convert to QueryParams
 	_, err := literal.ToQueryParams()
 	if err != nil {
 		t.Logf("Conversion failed: %v", err)

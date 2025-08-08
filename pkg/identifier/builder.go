@@ -2,20 +2,17 @@ package identifier
 
 import "sync"
 
-// IdentifierBuilder provides a concrete implementation of IIdentifier interface.
 type IdentifierBuilder struct {
 	criteria []FilterCriteria
 	mutex    sync.RWMutex
 }
 
-// NewIdentifier creates a new empty IdentifierBuilder instance
 func NewIdentifier() IIdentifier {
 	return &IdentifierBuilder{
 		criteria: make([]FilterCriteria, 0),
 	}
 }
 
-// clone creates a deep copy of the current builder state to maintain immutability
 func (ib *IdentifierBuilder) clone() *IdentifierBuilder {
 	ib.mutex.RLock()
 	defer ib.mutex.RUnlock()
@@ -28,14 +25,12 @@ func (ib *IdentifierBuilder) clone() *IdentifierBuilder {
 	}
 }
 
-// addCriteria adds a new filter criteria and returns a new builder instance
 func (ib *IdentifierBuilder) addCriteria(criteria FilterCriteria) IIdentifier {
 	newBuilder := ib.clone()
 	newBuilder.criteria = append(newBuilder.criteria, criteria)
 	return newBuilder
 }
 
-// Equal adds an equality filter condition
 func (ib *IdentifierBuilder) Equal(field string, value interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -44,7 +39,6 @@ func (ib *IdentifierBuilder) Equal(field string, value interface{}) IIdentifier 
 	})
 }
 
-// NotEqual adds a non-equality filter condition
 func (ib *IdentifierBuilder) NotEqual(field string, value interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -53,7 +47,6 @@ func (ib *IdentifierBuilder) NotEqual(field string, value interface{}) IIdentifi
 	})
 }
 
-// GreaterThan adds a greater-than filter condition
 func (ib *IdentifierBuilder) GreaterThan(field string, value interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -62,7 +55,6 @@ func (ib *IdentifierBuilder) GreaterThan(field string, value interface{}) IIdent
 	})
 }
 
-// GreaterOrEqual adds a greater-than-or-equal filter condition
 func (ib *IdentifierBuilder) GreaterOrEqual(field string, value interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -71,7 +63,6 @@ func (ib *IdentifierBuilder) GreaterOrEqual(field string, value interface{}) IId
 	})
 }
 
-// LessThan adds a less-than filter condition
 func (ib *IdentifierBuilder) LessThan(field string, value interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -80,7 +71,6 @@ func (ib *IdentifierBuilder) LessThan(field string, value interface{}) IIdentifi
 	})
 }
 
-// LessOrEqual adds a less-than-or-equal filter condition
 func (ib *IdentifierBuilder) LessOrEqual(field string, value interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -89,7 +79,6 @@ func (ib *IdentifierBuilder) LessOrEqual(field string, value interface{}) IIdent
 	})
 }
 
-// Like adds a pattern matching filter condition (SQL LIKE operator)
 func (ib *IdentifierBuilder) Like(field string, pattern string) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -98,7 +87,6 @@ func (ib *IdentifierBuilder) Like(field string, pattern string) IIdentifier {
 	})
 }
 
-// In adds a filter condition that checks if field value is in the provided list
 func (ib *IdentifierBuilder) In(field string, values []interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -107,7 +95,6 @@ func (ib *IdentifierBuilder) In(field string, values []interface{}) IIdentifier 
 	})
 }
 
-// NotIn adds a filter condition that checks if field value is not in the provided list
 func (ib *IdentifierBuilder) NotIn(field string, values []interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -116,7 +103,6 @@ func (ib *IdentifierBuilder) NotIn(field string, values []interface{}) IIdentifi
 	})
 }
 
-// IsNull adds a filter condition that checks if field value is NULL
 func (ib *IdentifierBuilder) IsNull(field string) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -124,7 +110,6 @@ func (ib *IdentifierBuilder) IsNull(field string) IIdentifier {
 	})
 }
 
-// IsNotNull adds a filter condition that checks if field value is not NULL
 func (ib *IdentifierBuilder) IsNotNull(field string) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -132,7 +117,6 @@ func (ib *IdentifierBuilder) IsNotNull(field string) IIdentifier {
 	})
 }
 
-// Between adds a range filter condition that checks if field value is between start and end
 func (ib *IdentifierBuilder) Between(field string, start, end interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -141,7 +125,6 @@ func (ib *IdentifierBuilder) Between(field string, start, end interface{}) IIden
 	})
 }
 
-// Contains adds a filter condition for JSON/array field containment
 func (ib *IdentifierBuilder) Contains(field string, value interface{}) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -150,7 +133,6 @@ func (ib *IdentifierBuilder) Contains(field string, value interface{}) IIdentifi
 	})
 }
 
-// Has adds a filter condition that checks for field existence (useful for JSON fields)
 func (ib *IdentifierBuilder) Has(field string) IIdentifier {
 	return ib.addCriteria(FilterCriteria{
 		Field:    field,
@@ -158,7 +140,6 @@ func (ib *IdentifierBuilder) Has(field string) IIdentifier {
 	})
 }
 
-// And combines the current builder with another identifier using AND logic
 func (ib *IdentifierBuilder) And(other IIdentifier) IIdentifier {
 	if other == nil {
 		return ib
@@ -168,7 +149,7 @@ func (ib *IdentifierBuilder) And(other IIdentifier) IIdentifier {
 	otherCriteria := other.ToFilterCriteria()
 
 	if len(otherCriteria) > 0 && len(newBuilder.criteria) > 0 {
-		// Set the logical operator of the last criteria to AND
+
 		if len(newBuilder.criteria) > 0 {
 			newBuilder.criteria[len(newBuilder.criteria)-1].LogicalOp = LogicalOperatorAnd
 		}
@@ -178,7 +159,6 @@ func (ib *IdentifierBuilder) And(other IIdentifier) IIdentifier {
 	return newBuilder
 }
 
-// Or combines the current builder with another identifier using OR logic
 func (ib *IdentifierBuilder) Or(other IIdentifier) IIdentifier {
 	if other == nil {
 		return ib
@@ -188,7 +168,7 @@ func (ib *IdentifierBuilder) Or(other IIdentifier) IIdentifier {
 	otherCriteria := other.ToFilterCriteria()
 
 	if len(otherCriteria) > 0 && len(newBuilder.criteria) > 0 {
-		// Set the logical operator of the last criteria to OR
+
 		if len(newBuilder.criteria) > 0 {
 			newBuilder.criteria[len(newBuilder.criteria)-1].LogicalOp = LogicalOperatorOr
 		}
@@ -198,7 +178,6 @@ func (ib *IdentifierBuilder) Or(other IIdentifier) IIdentifier {
 	return newBuilder
 }
 
-// ToFilterCriteria returns the accumulated filter criteria as a slice
 func (ib *IdentifierBuilder) ToFilterCriteria() []FilterCriteria {
 	ib.mutex.RLock()
 	defer ib.mutex.RUnlock()
@@ -212,10 +191,8 @@ func (ib *IdentifierBuilder) ToFilterCriteria() []FilterCriteria {
 	return result
 }
 
-// Reset clears all filter criteria and returns a fresh builder
 func (ib *IdentifierBuilder) Reset() IIdentifier {
 	return NewIdentifier()
 }
 
-// Compile-time check to ensure IdentifierBuilder implements IIdentifier
 var _ IIdentifier = (*IdentifierBuilder)(nil)

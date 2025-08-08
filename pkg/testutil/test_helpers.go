@@ -14,8 +14,6 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// TestEntity is a unified test entity for all SDK tests.
-// This replaces all duplicate MockEntity, TestEntity, FilterTestEntity across the codebase.
 type TestEntity struct {
 	domain.BaseEntity
 	Name        string `gorm:"column:name" json:"name"`
@@ -25,14 +23,12 @@ type TestEntity struct {
 	Description string `gorm:"column:description" json:"description"`
 	Status      string `gorm:"column:status" json:"status"`
 
-	// Relations for testing recursive filters
 	UserID    int          `gorm:"column:user_id" json:"userId,omitempty"`
 	User      *TestUser    `gorm:"foreignkey:UserID" json:"user,omitempty"`
 	ProfileID int          `gorm:"column:profile_id" json:"profileId,omitempty"`
 	Profile   *TestProfile `gorm:"foreignkey:ProfileID" json:"profile,omitempty"`
 }
 
-// TestUser represents a user entity for testing relations
 type TestUser struct {
 	domain.BaseEntity
 	Username  string       `gorm:"column:username" json:"username"`
@@ -42,7 +38,6 @@ type TestUser struct {
 	Profile   *TestProfile `gorm:"foreignkey:ProfileID" json:"profile,omitempty"`
 }
 
-// TestProfile represents a user profile for testing nested relations
 type TestProfile struct {
 	domain.BaseEntity
 	DisplayName string    `gorm:"column:display_name" json:"displayName"`
@@ -71,33 +66,27 @@ func (te *TestEntity) GetDeletedAt() *time.Time {
 	return nil
 }
 
-// GetVersion and SetVersion are not part of IBaseModel interface but kept for compatibility
 func (te *TestEntity) GetVersion() int {
-	// Version field doesn't exist in TestEntity, returning default
+
 	return 0
 }
 
 func (te *TestEntity) SetVersion(version int) {
-	// Version field doesn't exist in TestEntity, no-op for compatibility
+
 }
 
-// TableName returns the table name for GORM
 func (te *TestEntity) TableName() string {
 	return "test_entities"
 }
 
-// TableName returns the table name for GORM
 func (tu *TestUser) TableName() string {
 	return "test_users"
 }
 
-// TableName returns the table name for GORM
 func (tp *TestProfile) TableName() string {
 	return "test_profiles"
 }
 
-// SetupTestDB creates a standardized in-memory SQLite database for testing.
-// This replaces all duplicate setupTestDB, setupFilterTestDB functions across the codebase.
 func SetupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
@@ -108,7 +97,6 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("Failed to create test database: %v", err)
 	}
 
-	// Auto-migrate the unified test entities
 	if err := db.AutoMigrate(&TestEntity{}, &TestUser{}, &TestProfile{}); err != nil {
 		t.Fatalf("Failed to migrate test entities: %v", err)
 	}
@@ -116,13 +104,11 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// generateUniqueSlug creates a unique slug for testing purposes
 func generateUniqueSlug(prefix string) string {
 	timestamp := time.Now().UnixNano()
 	return fmt.Sprintf("%s-%d", prefix, timestamp)
 }
 
-// NewTestEntity creates a new test entity with a unique slug
 func NewTestEntity(name, status string) *TestEntity {
 	return &TestEntity{
 		BaseEntity: domain.BaseEntity{
@@ -133,7 +119,6 @@ func NewTestEntity(name, status string) *TestEntity {
 	}
 }
 
-// CreateTestEntities creates sample test entities for testing purposes
 func CreateTestEntities() []*TestEntity {
 	return []*TestEntity{
 		{
@@ -166,10 +151,7 @@ func CreateTestEntities() []*TestEntity {
 	}
 }
 
-// MockUnitOfWork provides a unified mock implementation for IUnitOfWork testing.
-// This replaces all duplicate MockUnitOfWork implementations across the codebase.
 type MockUnitOfWork struct {
-	// Mock call tracking fields
 	FindAllCalled                  bool
 	FindAllWithPaginationCalled    bool
 	FindOneCalled                  bool
@@ -196,7 +178,6 @@ type MockUnitOfWork struct {
 	RollbackTransactionCalled      bool
 	ResolveIDByUniqueFieldCalled   bool
 
-	// Mock return values
 	FindAllResult                  []*TestEntity
 	FindAllWithPaginationResult    []*TestEntity
 	FindAllWithPaginationCount     int64
@@ -218,7 +199,6 @@ type MockUnitOfWork struct {
 	ExistsResult                   bool
 	ResolveIDByUniqueFieldResult   int
 
-	// Mock error values
 	FindAllError                  error
 	FindAllWithPaginationError    error
 	FindOneError                  error
@@ -245,7 +225,6 @@ type MockUnitOfWork struct {
 	ResolveIDByUniqueFieldError   error
 }
 
-// MockUnitOfWork method implementations
 func (m *MockUnitOfWork) FindAll(ctx context.Context) ([]*TestEntity, error) {
 	m.FindAllCalled = true
 	return m.FindAllResult, m.FindAllError

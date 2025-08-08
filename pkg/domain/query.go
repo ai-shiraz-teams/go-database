@@ -1,6 +1,5 @@
 package domain
 
-// SortOrder represents sort direction
 type SortOrder string
 
 const (
@@ -8,13 +7,11 @@ const (
 	SortOrderDesc SortOrder = "DESC"
 )
 
-// SortField represents a single sort specification
 type SortField struct {
 	Field string    `json:"field"`
 	Order SortOrder `json:"order"`
 }
 
-// SortMap represents sorting configuration
 type SortMap[T IBaseModel] map[string]SortOrder
 
 type IQueryParams[T IBaseModel] interface {
@@ -40,27 +37,22 @@ type IQueryParams[T IBaseModel] interface {
 
 	PrepareDefaults() error
 
-	// Additional methods for compatibility with query package
 	HasFilters() bool
 	ToFilterCriteria() []FilterCriteria
 	HasSort() bool
 	HasPreloads() bool
 
-	// Soft-delete visibility methods
 	GetIncludeDeleted() bool
 	GetOnlyDeleted() bool
 	WithDeletedVisibility(includeDeleted, onlyDeleted bool) IQueryParams[T]
 
-	// Sort field methods
 	ToSortFields() []SortField
 
-	// Methods for building queries
 	WithFilters(identifier interface{}) IQueryParams[T]
 	AddSortDesc(field string) IQueryParams[T]
 	AddSortAsc(field string) IQueryParams[T]
 }
 
-// SimpleQueryParams provides a basic implementation of IQueryParams
 type SimpleQueryParams[T IBaseModel] struct {
 	filter         interface{}
 	sort           interface{}
@@ -72,7 +64,6 @@ type SimpleQueryParams[T IBaseModel] struct {
 	filters        []FilterCriteria
 }
 
-// NewQueryParams creates a new SimpleQueryParams instance
 func NewQueryParams[T IBaseModel]() IQueryParams[T] {
 	return &SimpleQueryParams[T]{
 		limit:    50,
@@ -82,7 +73,6 @@ func NewQueryParams[T IBaseModel]() IQueryParams[T] {
 	}
 }
 
-// NewSimpleQueryParams creates a new SimpleQueryParams instance (alias for consistency)
 func NewSimpleQueryParams[T IBaseModel]() IQueryParams[T] {
 	return NewQueryParams[T]()
 }
@@ -116,12 +106,11 @@ func (q *SimpleQueryParams[T]) WithDeletedVisibility(includeDeleted, onlyDeleted
 	return q
 }
 func (q *SimpleQueryParams[T]) ToSortFields() []SortField {
-	// Convert sort interface to SortField slice
+
 	if q.sort == nil {
 		return []SortField{}
 	}
 
-	// Handle SortMap type
 	if sortMap, ok := q.sort.(SortMap[T]); ok {
 		var fields []SortField
 		for field, order := range sortMap {
@@ -130,7 +119,6 @@ func (q *SimpleQueryParams[T]) ToSortFields() []SortField {
 		return fields
 	}
 
-	// Handle []SortField type
 	if sortFields, ok := q.sort.([]SortField); ok {
 		return sortFields
 	}
@@ -138,35 +126,30 @@ func (q *SimpleQueryParams[T]) ToSortFields() []SortField {
 	return []SortField{}
 }
 
-// WithFilters applies filter criteria to the QueryParams
 func (q *SimpleQueryParams[T]) WithFilters(identifier interface{}) IQueryParams[T] {
-	// Convert identifier to filter criteria if possible
+
 	if id, ok := identifier.(interface{ ToFilterCriteria() []FilterCriteria }); ok {
 		q.filters = id.ToFilterCriteria()
 	}
 	return q
 }
 
-// AddSortDesc adds a descending sort field
 func (q *SimpleQueryParams[T]) AddSortDesc(field string) IQueryParams[T] {
 	return q.AddSort(field, SortOrderDesc)
 }
 
-// AddSortAsc adds an ascending sort field
 func (q *SimpleQueryParams[T]) AddSortAsc(field string) IQueryParams[T] {
 	return q.AddSort(field, SortOrderAsc)
 }
 
-// AddSort adds a sort field with the specified order
 func (q *SimpleQueryParams[T]) AddSort(field string, order SortOrder) IQueryParams[T] {
-	// Convert current sort to []SortField if needed
+
 	currentSorts := q.ToSortFields()
 	currentSorts = append(currentSorts, SortField{Field: field, Order: order})
 	q.sort = currentSorts
 	return q
 }
 
-// FilterCriteria represents a filter condition - moved from identifier package for domain independence
 type FilterCriteria struct {
 	Field     string           `json:"field"`
 	Operator  FilterOperator   `json:"operator"`
@@ -176,7 +159,6 @@ type FilterCriteria struct {
 	LogicalOp LogicalOperator  `json:"logical_op,omitempty"`
 }
 
-// FilterOperator represents comparison operators
 type FilterOperator string
 
 const (
@@ -196,7 +178,6 @@ const (
 	FilterOperatorHas          FilterOperator = "HAS"
 )
 
-// LogicalOperator represents logical operators for combining filters
 type LogicalOperator string
 
 const (
@@ -204,7 +185,6 @@ const (
 	LogicalOperatorOr  LogicalOperator = "OR"
 )
 
-// RecursiveFilter represents a hierarchical filter structure for complex queries
 type RecursiveFilter struct {
 	Field     string            `json:"field,omitempty"`
 	Operator  FilterOperator    `json:"operator,omitempty"`
@@ -214,19 +194,15 @@ type RecursiveFilter struct {
 	LogicalOp LogicalOperator   `json:"logical_op,omitempty"`
 }
 
-// RecursiveFilterParser provides parsing capabilities for recursive filters
 type RecursiveFilterParser struct{}
 
-// NewRecursiveFilterParser creates a new recursive filter parser
 func NewRecursiveFilterParser() *RecursiveFilterParser {
 	return &RecursiveFilterParser{}
 }
 
-// Parse converts a RecursiveFilter to FilterCriteria
 func (rfp *RecursiveFilterParser) Parse(filter RecursiveFilter) []FilterCriteria {
 	var criteria []FilterCriteria
 
-	// Convert the recursive filter to filter criteria
 	if filter.Field != "" {
 		criterion := FilterCriteria{
 			Field:     filter.Field,
@@ -238,7 +214,6 @@ func (rfp *RecursiveFilterParser) Parse(filter RecursiveFilter) []FilterCriteria
 		criteria = append(criteria, criterion)
 	}
 
-	// Process children
 	for _, child := range filter.Children {
 		childCriteria := rfp.Parse(child)
 		criteria = append(criteria, childCriteria...)

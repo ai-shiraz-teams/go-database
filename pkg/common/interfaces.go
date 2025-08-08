@@ -1,7 +1,6 @@
 package common
 
 // IBaseModel defines the minimal interface for database entities.
-// This is a standalone interface to avoid circular dependencies.
 type IBaseModel interface {
 	GetID() int
 	GetSlug() string

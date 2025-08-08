@@ -12,13 +12,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// FilterApplier interface for applying query parameters to GORM queries
 type FilterApplier[T domain.IBaseModel] interface {
 	ApplyQueryParams(db *gorm.DB, queryParams domain.IQueryParams[T]) *gorm.DB
 	ApplyIdentifier(db *gorm.DB, identifier identifier.IIdentifier) *gorm.DB
 }
 
-// GormFilterApplier implements FilterApplier for GORM
 type GormFilterApplier[T domain.IBaseModel] struct{}
 
 func NewGormFilterApplier[T domain.IBaseModel]() FilterApplier[T] {
@@ -26,7 +24,7 @@ func NewGormFilterApplier[T domain.IBaseModel]() FilterApplier[T] {
 }
 
 func (fa *GormFilterApplier[T]) ApplyQueryParams(db *gorm.DB, queryParams domain.IQueryParams[T]) *gorm.DB {
-	// Apply filters
+
 	if queryParams.HasFilters() {
 		criteria := queryParams.ToFilterCriteria()
 		for _, criterion := range criteria {
@@ -34,14 +32,12 @@ func (fa *GormFilterApplier[T]) ApplyQueryParams(db *gorm.DB, queryParams domain
 		}
 	}
 
-	// Apply preloads
 	if queryParams.HasPreloads() {
 		for _, preload := range queryParams.Preloads() {
 			db = db.Preload(preload)
 		}
 	}
 
-	// Apply sorting
 	if queryParams.HasSort() {
 		if sortMap, ok := queryParams.Sort().(domain.SortMap[T]); ok {
 			for field, order := range sortMap {
@@ -90,7 +86,6 @@ func (fa *GormFilterApplier[T]) applyCriterion(db *gorm.DB, criterion domain.Fil
 	return db
 }
 
-// ApplyIdentifier applies identifier filters to GORM query
 func (fa *GormFilterApplier[T]) ApplyIdentifier(db *gorm.DB, identifier identifier.IIdentifier) *gorm.DB {
 	if identifier == nil {
 		return db
@@ -98,7 +93,7 @@ func (fa *GormFilterApplier[T]) ApplyIdentifier(db *gorm.DB, identifier identifi
 
 	criteria := identifier.ToFilterCriteria()
 	for _, criterion := range criteria {
-		// Convert identifier.FilterCriteria to domain.FilterCriteria
+
 		domainCriterion := domain.FilterCriteria{
 			Field:     criterion.Field,
 			Operator:  domain.FilterOperator(criterion.Operator),
@@ -107,7 +102,6 @@ func (fa *GormFilterApplier[T]) ApplyIdentifier(db *gorm.DB, identifier identifi
 			LogicalOp: domain.LogicalOperator(criterion.LogicalOp),
 		}
 
-		// Convert Group if present
 		if len(criterion.Group) > 0 {
 			domainCriterion.Group = make([]domain.FilterCriteria, len(criterion.Group))
 			for i, gc := range criterion.Group {
@@ -127,7 +121,6 @@ func (fa *GormFilterApplier[T]) ApplyIdentifier(db *gorm.DB, identifier identifi
 	return db
 }
 
-// BuildQueryFromIdentifier builds a GORM query from an identifier
 func BuildQueryFromIdentifier[T domain.IBaseModel](db *gorm.DB, identifier identifier.IIdentifier) *gorm.DB {
 	applier := &GormFilterApplier[T]{}
 	query := db.Model(new(T))
@@ -199,10 +192,9 @@ func (uow *PostgresUnitOfWork[T]) FindAllWithArchived(ctx context.Context, withA
 	db := uow.getDB()
 
 	if withArchived {
-		// Include archived/soft-deleted entities by using Unscoped
+
 		db = db.Unscoped()
 	}
-	// Default behavior (withArchived=false) uses GORM's built-in soft-delete filtering
 
 	if err := db.WithContext(ctx).Find(&entities).Error; err != nil {
 		return nil, err
@@ -219,7 +211,6 @@ func (uow *PostgresUnitOfWork[T]) FindAllWithPagination(ctx context.Context, que
 
 	filteredQuery := uow.filterApplier.ApplyQueryParams(baseQuery, queryParams)
 
-	// Convert 1-based Offset to 0-based for SQL: Offset=1 means page 1 (start at 0), Offset=2 means page 2 (start at Limit)
 	sqlOffset := 0
 	if queryParams.Offset() > 1 {
 		sqlOffset = (queryParams.Offset() - 1) * queryParams.Limit()
@@ -250,7 +241,6 @@ func (uow *PostgresUnitOfWork[T]) FindAllWithPaginationAndArchived(ctx context.C
 
 	baseQuery := db.Model(new(T))
 
-	// Apply withArchived logic by temporarily overriding the query parameter
 	originalIncludeDeleted := queryParams.GetIncludeDeleted()
 	if withArchived {
 		queryParams = queryParams.WithDeletedVisibility(true, false)
@@ -258,12 +248,10 @@ func (uow *PostgresUnitOfWork[T]) FindAllWithPaginationAndArchived(ctx context.C
 
 	filteredQuery := uow.filterApplier.ApplyQueryParams(baseQuery, queryParams)
 
-	// Restore original value
 	if withArchived {
 		queryParams = queryParams.WithDeletedVisibility(originalIncludeDeleted, queryParams.GetOnlyDeleted())
 	}
 
-	// Convert 1-based Offset to 0-based for SQL: Offset=1 means page 1 (start at 0), Offset=2 means page 2 (start at Limit)
 	sqlOffset := 0
 	if queryParams.Offset() > 1 {
 		sqlOffset = (queryParams.Offset() - 1) * queryParams.Limit()
@@ -330,7 +318,6 @@ func (uow *PostgresUnitOfWork[T]) FindOneByIdentifier(ctx context.Context, ident
 	return entity, nil
 }
 
-// WithArchived methods implementation
 func (uow *PostgresUnitOfWork[T]) FindOneWithArchived(ctx context.Context, filter T, withArchived bool) (T, error) {
 	var entity T
 	db := uow.getDB()
@@ -585,7 +572,6 @@ func (uow *PostgresUnitOfWork[T]) Count(ctx context.Context, queryParams domain.
 	db := uow.getDB()
 	baseQuery := db.Model(new(T))
 
-	// Create a simple query params adapter
 	simpleParams := domain.NewQueryParams[T]()
 	if queryParams != nil {
 		if queryParams.HasFilters() {
@@ -620,18 +606,9 @@ func (uow *PostgresUnitOfWork[T]) Exists(ctx context.Context, identifier identif
 	return count > 0, nil
 }
 
-// ========================
-// New Extended Methods
-// ========================
-
-// IsInTransaction returns true if currently within a transaction
 func (uow *PostgresUnitOfWork[T]) IsInTransaction() bool {
 	return uow.tx != nil
 }
-
-// ========================
-// 🧩 Entity Linking & Relations
-// ========================
 
 func (uow *PostgresUnitOfWork[T]) Connect(ctx context.Context, parentEntity T, relationField string, childEntity domain.IBaseModel) error {
 	db := uow.getDB()
@@ -682,10 +659,6 @@ func (uow *PostgresUnitOfWork[T]) ConnectOrCreateRelation(ctx context.Context, p
 	return existing, uow.ConnectByIdentifier(ctx, parentIdentifier, relationField, slugIdentifier)
 }
 
-// ========================
-// 📄 Enhanced Retrieval
-// ========================
-
 func (uow *PostgresUnitOfWork[T]) FindAllByQuery(ctx context.Context, queryParams domain.IQueryParams[T]) ([]T, error) {
 	db := uow.getDB()
 	baseQuery := db.Model(new(T))
@@ -720,10 +693,6 @@ func (uow *PostgresUnitOfWork[T]) FindManyRaw(ctx context.Context, rawQuery stri
 	return entities, nil
 }
 
-// ========================
-// 🔍 Projections & Filters
-// ========================
-
 func (uow *PostgresUnitOfWork[T]) FindOneWithProjection(ctx context.Context, identifier identifier.IIdentifier, fields []string) (map[string]interface{}, error) {
 	db := uow.getDB()
 	query := BuildQueryFromIdentifier[T](db, identifier)
@@ -755,12 +724,10 @@ func (uow *PostgresUnitOfWork[T]) FindAllWithProjection(ctx context.Context, que
 	return results, nil
 }
 
-// WithArchived query methods implementation
 func (uow *PostgresUnitOfWork[T]) FindAllByQueryWithArchived(ctx context.Context, queryParams domain.IQueryParams[T], withArchived bool) ([]T, error) {
 	db := uow.getDB()
 	baseQuery := db.Model(new(T))
 
-	// Apply withArchived logic by temporarily overriding the query parameter
 	if queryParams == nil {
 		queryParams = domain.NewQueryParams[T]()
 	}
@@ -771,7 +738,6 @@ func (uow *PostgresUnitOfWork[T]) FindAllByQueryWithArchived(ctx context.Context
 
 	filteredQuery := uow.filterApplier.ApplyQueryParams(baseQuery, queryParams)
 
-	// Restore original value
 	queryParams = queryParams.WithDeletedVisibility(originalIncludeDeleted, queryParams.GetOnlyDeleted())
 
 	var entities []T
@@ -786,7 +752,6 @@ func (uow *PostgresUnitOfWork[T]) FindFirstWithArchived(ctx context.Context, que
 	db := uow.getDB()
 	baseQuery := db.Model(new(T))
 
-	// Apply withArchived logic by temporarily overriding the query parameter
 	if queryParams == nil {
 		queryParams = domain.NewQueryParams[T]()
 	}
@@ -797,7 +762,6 @@ func (uow *PostgresUnitOfWork[T]) FindFirstWithArchived(ctx context.Context, que
 
 	filteredQuery := uow.filterApplier.ApplyQueryParams(baseQuery, queryParams)
 
-	// Restore original value
 	queryParams = queryParams.WithDeletedVisibility(originalIncludeDeleted, queryParams.GetOnlyDeleted())
 
 	if err := filteredQuery.WithContext(ctx).First(&entity).Error; err != nil {
@@ -830,7 +794,6 @@ func (uow *PostgresUnitOfWork[T]) FindAllWithProjectionAndArchived(ctx context.C
 	db := uow.getDB()
 	baseQuery := db.Model(new(T))
 
-	// Apply withArchived logic by temporarily overriding the query parameter
 	if queryParams == nil {
 		queryParams = domain.NewQueryParams[T]()
 	}
@@ -841,7 +804,6 @@ func (uow *PostgresUnitOfWork[T]) FindAllWithProjectionAndArchived(ctx context.C
 
 	filteredQuery := uow.filterApplier.ApplyQueryParams(baseQuery, queryParams)
 
-	// Restore original value
 	queryParams = queryParams.WithDeletedVisibility(originalIncludeDeleted, queryParams.GetOnlyDeleted())
 
 	if len(fields) > 0 {
@@ -866,10 +828,6 @@ func (uow *PostgresUnitOfWork[T]) CountDistinct(ctx context.Context, field strin
 	}
 	return count, nil
 }
-
-// ========================
-// 📥 Enhanced Create/Insert
-// ========================
 
 func (uow *PostgresUnitOfWork[T]) Upsert(ctx context.Context, entity T, conflictFields []string) (T, error) {
 	db := uow.getDB()
@@ -896,10 +854,6 @@ func (uow *PostgresUnitOfWork[T]) BulkUpsert(ctx context.Context, entities []T, 
 
 	return entities, result.Error
 }
-
-// ========================
-// 🛠 Enhanced Update
-// ========================
 
 func (uow *PostgresUnitOfWork[T]) UpdatePartial(ctx context.Context, identifier identifier.IIdentifier, updates map[string]interface{}) (T, error) {
 	var entity T
@@ -934,10 +888,6 @@ func (uow *PostgresUnitOfWork[T]) BulkUpdatePartial(ctx context.Context, updates
 	return result, nil
 }
 
-// ========================
-// 🧹 Enhanced Deletion
-// ========================
-
 func (uow *PostgresUnitOfWork[T]) DeleteAll(ctx context.Context, queryParams domain.IQueryParams[T], hardDelete bool) (domain.BulkOperationResult, error) {
 	result := domain.BulkOperationResult{}
 	db := uow.getDB()
@@ -958,10 +908,6 @@ func (uow *PostgresUnitOfWork[T]) DeleteAll(ctx context.Context, queryParams dom
 	return result, nil
 }
 
-// ========================
-// ♻️ Enhanced Restore
-// ========================
-
 func (uow *PostgresUnitOfWork[T]) BulkRestore(ctx context.Context, identifiers []identifier.IIdentifier) (domain.BulkOperationResult, error) {
 	result := domain.BulkOperationResult{}
 	db := uow.getDB()
@@ -979,10 +925,6 @@ func (uow *PostgresUnitOfWork[T]) BulkRestore(ctx context.Context, identifiers [
 	return result, nil
 }
 
-// ========================
-// 🗑 Enhanced Trash Views
-// ========================
-
 func (uow *PostgresUnitOfWork[T]) GetTrashedByQuery(ctx context.Context, queryParams domain.IQueryParams[T]) ([]T, error) {
 	var entities []T
 	db := uow.getDB()
@@ -994,10 +936,6 @@ func (uow *PostgresUnitOfWork[T]) GetTrashedByQuery(ctx context.Context, queryPa
 	}
 	return entities, nil
 }
-
-// ========================
-// 🔧 Enhanced Utility Operations
-// ========================
 
 func (uow *PostgresUnitOfWork[T]) ExistsWithQuery(ctx context.Context, queryParams domain.IQueryParams[T]) (bool, error) {
 	db := uow.getDB()
@@ -1027,11 +965,10 @@ func (uow *PostgresUnitOfWork[T]) Aggregate(ctx context.Context, operation domai
 	db := uow.getDB()
 	baseQuery := db.Model(new(T))
 
-	// Create a simple query params adapter since we only need basic functionality
 	simpleParams := domain.NewQueryParams[T]()
 	if queryParams != nil {
 		if queryParams.HasFilters() {
-			// Copy filters from domain params to query params
+
 			simpleParams = simpleParams.WithFilter(queryParams.Filter())
 		}
 		if queryParams.HasSort() {
@@ -1069,14 +1006,9 @@ func (uow *PostgresUnitOfWork[T]) Aggregate(ctx context.Context, operation domai
 	return result, nil
 }
 
-// ========================
-// 📊 Performance & Streaming
-// ========================
-
 func (uow *PostgresUnitOfWork[T]) FindAllStream(ctx context.Context, queryParams domain.IQueryParams[T], batchSize int) (<-chan domain.StreamResult[T], error) {
 	resultChan := make(chan domain.StreamResult[T], batchSize)
 
-	// Create a simple query params adapter
 	simpleParams := domain.NewQueryParams[T]()
 	if queryParams != nil {
 		if queryParams.HasFilters() {
@@ -1161,7 +1093,6 @@ func (uow *PostgresUnitOfWork[T]) ExecuteInBatches(ctx context.Context, queryPar
 }
 
 func (uow *PostgresUnitOfWork[T]) RefreshCache(ctx context.Context) error {
-	// PostgreSQL implementation doesn't have caching by default
-	// This method is a no-op but satisfies the interface
+
 	return nil
 }

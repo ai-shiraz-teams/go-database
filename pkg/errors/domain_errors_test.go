@@ -5,13 +5,11 @@ import (
 )
 
 func TestEntityNotFoundError_Error(t *testing.T) {
-	// Arrange
+
 	err := NewEntityNotFoundError("User", 123)
 
-	// Act
 	message := err.Error()
 
-	// Assert
 	expected := "User with ID 123 not found"
 	if message != expected {
 		t.Errorf("Expected error message '%s', got '%s'", expected, message)
@@ -19,14 +17,12 @@ func TestEntityNotFoundError_Error(t *testing.T) {
 }
 
 func TestEntityNotFoundError_Fields(t *testing.T) {
-	// Arrange
+
 	entityType := "Product"
 	id := "abc-123"
 
-	// Act
 	err := NewEntityNotFoundError(entityType, id)
 
-	// Assert
 	if err.EntityType != entityType {
 		t.Errorf("Expected EntityType '%s', got '%s'", entityType, err.EntityType)
 	}
@@ -36,13 +32,11 @@ func TestEntityNotFoundError_Fields(t *testing.T) {
 }
 
 func TestValidationError_Error(t *testing.T) {
-	// Arrange
+
 	err := NewValidationError("email", "must be a valid email address")
 
-	// Act
 	message := err.Error()
 
-	// Assert
 	expected := "validation error on field 'email': must be a valid email address"
 	if message != expected {
 		t.Errorf("Expected error message '%s', got '%s'", expected, message)
@@ -50,14 +44,12 @@ func TestValidationError_Error(t *testing.T) {
 }
 
 func TestValidationError_Fields(t *testing.T) {
-	// Arrange
+
 	field := "password"
 	message := "must be at least 8 characters"
 
-	// Act
 	err := NewValidationError(field, message)
 
-	// Assert
 	if err.Field != field {
 		t.Errorf("Expected Field '%s', got '%s'", field, err.Field)
 	}
@@ -67,13 +59,11 @@ func TestValidationError_Fields(t *testing.T) {
 }
 
 func TestDuplicateEntityError_Error(t *testing.T) {
-	// Arrange
+
 	err := NewDuplicateEntityError("User", "email", "john@example.com")
 
-	// Act
 	message := err.Error()
 
-	// Assert
 	expected := "User with email 'john@example.com' already exists"
 	if message != expected {
 		t.Errorf("Expected error message '%s', got '%s'", expected, message)
@@ -81,15 +71,13 @@ func TestDuplicateEntityError_Error(t *testing.T) {
 }
 
 func TestDuplicateEntityError_Fields(t *testing.T) {
-	// Arrange
+
 	entityType := "Product"
 	field := "sku"
 	value := "PROD-123"
 
-	// Act
 	err := NewDuplicateEntityError(entityType, field, value)
 
-	// Assert
 	if err.EntityType != entityType {
 		t.Errorf("Expected EntityType '%s', got '%s'", entityType, err.EntityType)
 	}
@@ -102,13 +90,11 @@ func TestDuplicateEntityError_Fields(t *testing.T) {
 }
 
 func TestConcurrencyError_Error(t *testing.T) {
-	// Arrange
+
 	err := NewConcurrencyError("Order", 456)
 
-	// Act
 	message := err.Error()
 
-	// Assert
 	expected := "concurrent modification detected for Order with ID 456"
 	if message != expected {
 		t.Errorf("Expected error message '%s', got '%s'", expected, message)
@@ -116,14 +102,12 @@ func TestConcurrencyError_Error(t *testing.T) {
 }
 
 func TestConcurrencyError_Fields(t *testing.T) {
-	// Arrange
+
 	entityType := "Invoice"
 	id := int64(789)
 
-	// Act
 	err := NewConcurrencyError(entityType, id)
 
-	// Assert
 	if err.EntityType != entityType {
 		t.Errorf("Expected EntityType '%s', got '%s'", entityType, err.EntityType)
 	}
@@ -133,7 +117,7 @@ func TestConcurrencyError_Fields(t *testing.T) {
 }
 
 func TestErrorTypes_ImplementError(t *testing.T) {
-	// Test that all custom error types implement the error interface
+
 	tests := []struct {
 		name string
 		err  error
@@ -175,7 +159,7 @@ func TestErrorMessages_NonEmptyValues(t *testing.T) {
 }
 
 func TestErrorMessages_WithDifferentTypes(t *testing.T) {
-	// Test with different ID types
+
 	tests := []struct {
 		name string
 		id   interface{}
@@ -198,7 +182,7 @@ func TestErrorMessages_WithDifferentTypes(t *testing.T) {
 }
 
 func TestErrorsWithSpecialCharacters(t *testing.T) {
-	// Test that error messages handle special characters properly
+
 	tests := []struct {
 		name   string
 		create func() error

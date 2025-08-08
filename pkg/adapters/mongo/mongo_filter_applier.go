@@ -12,15 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// MongoFilterApplier handles the conversion of query parameters and identifiers to MongoDB filters
 type MongoFilterApplier struct{}
 
-// NewMongoFilterApplier creates a new MongoDB filter applier
 func NewMongoFilterApplier() *MongoFilterApplier {
 	return &MongoFilterApplier{}
 }
 
-// ApplyQueryParams converts QueryParams to MongoDB filter
 func (mfa *MongoFilterApplier) ApplyQueryParams(baseFilter bson.M, queryParams interface{}) bson.M {
 	if queryParams == nil {
 		return baseFilter
@@ -48,7 +45,6 @@ func (mfa *MongoFilterApplier) ApplyQueryParams(baseFilter bson.M, queryParams i
 		}
 	}
 
-	// Handle soft-delete visibility flags (similar to PostgreSQL FilterApplier)
 	var onlyDeleted, includeDeleted bool
 	if onlyDeletedField := v.FieldByName("OnlyDeleted"); onlyDeletedField.IsValid() {
 		onlyDeleted, _ = onlyDeletedField.Interface().(bool)
@@ -57,20 +53,17 @@ func (mfa *MongoFilterApplier) ApplyQueryParams(baseFilter bson.M, queryParams i
 		includeDeleted, _ = includeDeletedField.Interface().(bool)
 	}
 
-	// Apply soft-delete filter logic based on flags
 	if onlyDeleted {
-		// Show only deleted records
+
 		baseFilter["deleted_at"] = bson.M{"$exists": true}
 	} else if !includeDeleted {
-		// Show only non-deleted records (default behavior)
+
 		baseFilter["deleted_at"] = bson.M{"$exists": false}
 	}
-	// If includeDeleted is true and onlyDeleted is false, show all records (no deleted_at filter)
 
 	return baseFilter
 }
 
-// BuildFilterFromIdentifier converts an IIdentifier to MongoDB filter
 func (mfa *MongoFilterApplier) BuildFilterFromIdentifier(identifier identifier.IIdentifier) bson.M {
 	filter := bson.M{}
 	criteria := identifier.ToFilterCriteria()
@@ -82,7 +75,6 @@ func (mfa *MongoFilterApplier) BuildFilterFromIdentifier(identifier identifier.I
 	return filter
 }
 
-// applyFilterCriteria applies a single filter criterion to the MongoDB filter
 func (mfa *MongoFilterApplier) applyFilterCriteria(filter bson.M, criterion identifier.FilterCriteria) {
 	field := criterion.Field
 	value := criterion.Value
@@ -123,7 +115,6 @@ func (mfa *MongoFilterApplier) applyFilterCriteria(filter bson.M, criterion iden
 	}
 }
 
-// convertLikeToRegex converts SQL LIKE patterns to MongoDB regex
 func (mfa *MongoFilterApplier) convertLikeToRegex(likePattern string) string {
 	escaped := strings.ReplaceAll(likePattern, "\\", "\\\\")
 	escaped = strings.ReplaceAll(escaped, ".", "\\.")
@@ -146,7 +137,6 @@ func (mfa *MongoFilterApplier) convertLikeToRegex(likePattern string) string {
 	return "^" + escaped + "$"
 }
 
-// BuildSortDocument converts sort parameters to MongoDB sort document
 func (mfa *MongoFilterApplier) BuildSortDocument(sortParams []domain.SortField) bson.D {
 	sort := bson.D{}
 
@@ -161,7 +151,6 @@ func (mfa *MongoFilterApplier) BuildSortDocument(sortParams []domain.SortField) 
 	return sort
 }
 
-// StructToBSONFilter converts a struct to a MongoDB filter document
 func (mfa *MongoFilterApplier) StructToBSONFilter(entity interface{}) (bson.M, error) {
 	filter := bson.M{}
 
@@ -204,7 +193,6 @@ func (mfa *MongoFilterApplier) StructToBSONFilter(entity interface{}) (bson.M, e
 	return filter, nil
 }
 
-// StructToBSONUpdate converts a struct to a MongoDB update document
 func (mfa *MongoFilterApplier) StructToBSONUpdate(entity interface{}) (bson.M, error) {
 	update := bson.M{}
 
@@ -247,7 +235,6 @@ func (mfa *MongoFilterApplier) StructToBSONUpdate(entity interface{}) (bson.M, e
 	return update, nil
 }
 
-// getFieldName extracts the MongoDB field name from struct field tags
 func (mfa *MongoFilterApplier) getFieldName(field reflect.StructField) string {
 
 	if bsonTag := field.Tag.Get("bson"); bsonTag != "" {
@@ -275,7 +262,6 @@ func (mfa *MongoFilterApplier) getFieldName(field reflect.StructField) string {
 	return mfa.toSnakeCase(field.Name)
 }
 
-// toSnakeCase converts PascalCase to snake_case
 func (mfa *MongoFilterApplier) toSnakeCase(str string) string {
 	var result []rune
 	for i, r := range str {
@@ -287,7 +273,6 @@ func (mfa *MongoFilterApplier) toSnakeCase(str string) string {
 	return strings.ToLower(string(result))
 }
 
-// isZeroValue checks if a value is the zero value for its type
 func (mfa *MongoFilterApplier) isZeroValue(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
@@ -313,7 +298,6 @@ func (mfa *MongoFilterApplier) isZeroValue(v reflect.Value) bool {
 	return false
 }
 
-// ValidateFilterValue validates that a filter value is supported by MongoDB
 func (mfa *MongoFilterApplier) ValidateFilterValue(fieldName string, value interface{}) error {
 	if value == nil {
 		return nil

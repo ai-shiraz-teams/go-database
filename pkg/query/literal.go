@@ -7,11 +7,8 @@ import (
 	"github.com/ai-shiraz-teams/go-database/pkg/domain"
 )
 
-// Global type registry instance
 var globalTypeRegistry = NewTypeRegistry()
 
-// QueryParamsLiteral represents a query parameter structure that can be constructed as an object literal
-// This provides the strongly typed structure that users can construct directly
 type QueryParamsLiteral[T domain.IBaseModel] struct {
 	Filter         FilterLiteral[T] `json:"filter,omitempty"`
 	Sort           SortLiteral[T]   `json:"sort,omitempty"`
@@ -22,75 +19,59 @@ type QueryParamsLiteral[T domain.IBaseModel] struct {
 	OnlyDeleted    bool             `json:"onlyDeleted,omitempty"`
 }
 
-// FilterLiteral allows object literal construction of filters with type safety
-// Uses strongly typed approach with union types instead of map[string]interface{}
 type FilterLiteral[T domain.IBaseModel] map[string]FilterLiteralValue[T]
 
-// FilterLiteralValue represents a strongly typed filter value that can be either:
-// 1. A FilterOperatorLiteral for operator-based filtering
-// 2. A slice of FilterLiteral for logical operations (AND/OR)
-// 3. A direct value for equality comparison (strongly typed)
 type FilterLiteralValue[T domain.IBaseModel] interface {
 	isFilterLiteralValue()
 }
 
-// FilterOperatorLiteralValue represents an operator-based filter
 type FilterOperatorLiteralValue[T domain.IBaseModel, V comparable] struct {
 	FilterOperatorLiteral[V]
 }
 
 func (f FilterOperatorLiteralValue[T, V]) isFilterLiteralValue() {}
 
-// FilterLogicalValue represents logical operations (AND/OR)
 type FilterLogicalValue[T domain.IBaseModel] struct {
 	Values []FilterLiteral[T]
 }
 
 func (f FilterLogicalValue[T]) isFilterLiteralValue() {}
 
-// DirectFilterValue represents a direct value for equality comparison
 type DirectFilterValue[V comparable] struct {
 	Value V
 }
 
 func (f DirectFilterValue[V]) isFilterLiteralValue() {}
 
-// SortLiteral allows object literal construction of sort parameters
 type SortLiteral[T domain.IBaseModel] map[string]SortDirection
 
-// FilterOperatorLiteral represents the available filter operations for a field
 type FilterOperatorLiteral[V any] struct {
-	Eq        *V    `json:"eq,omitempty"`          // Equal
-	Neq       *V    `json:"neq,omitempty"`         // Not equal
-	Gt        *V    `json:"gt,omitempty"`          // Greater than
-	Gte       *V    `json:"gte,omitempty"`         // Greater than or equal
-	Lt        *V    `json:"lt,omitempty"`          // Less than
-	Lte       *V    `json:"lte,omitempty"`         // Less than or equal
-	Like      *V    `json:"like,omitempty"`        // SQL LIKE pattern (strings only)
-	Contains  *V    `json:"contains,omitempty"`    // Contains substring (strings only)
-	In        []V   `json:"in,omitempty"`          // Value in list
-	NotIn     []V   `json:"not_in,omitempty"`      // Value not in list
-	Between   []V   `json:"between,omitempty"`     // Between two values (exactly 2 elements)
-	IsNull    *bool `json:"is_null,omitempty"`     // Is NULL check
-	IsNotNull *bool `json:"is_not_null,omitempty"` // Is NOT NULL check
+	Eq        *V    `json:"eq,omitempty"`
+	Neq       *V    `json:"neq,omitempty"`
+	Gt        *V    `json:"gt,omitempty"`
+	Gte       *V    `json:"gte,omitempty"`
+	Lt        *V    `json:"lt,omitempty"`
+	Lte       *V    `json:"lte,omitempty"`
+	Like      *V    `json:"like,omitempty"`
+	Contains  *V    `json:"contains,omitempty"`
+	In        []V   `json:"in,omitempty"`
+	NotIn     []V   `json:"not_in,omitempty"`
+	Between   []V   `json:"between,omitempty"`
+	IsNull    *bool `json:"is_null,omitempty"`
+	IsNotNull *bool `json:"is_not_null,omitempty"`
 }
 
-// StringFilterOperatorLiteral extends FilterOperatorLiteral for string fields
 type StringFilterOperatorLiteral = FilterOperatorLiteral[string]
 
-// IntFilterOperatorLiteral extends FilterOperatorLiteral for int fields
 type IntFilterOperatorLiteral = FilterOperatorLiteral[int]
 
-// BoolFilterOperatorLiteral extends FilterOperatorLiteral for bool fields
 type BoolFilterOperatorLiteral = FilterOperatorLiteral[bool]
 
-// ComplexFilterLiteral allows for AND/OR logical operations
 type ComplexFilterLiteral[T domain.IBaseModel] struct {
 	And []FilterLiteral[T] `json:"and,omitempty"`
 	Or  []FilterLiteral[T] `json:"or,omitempty"`
 }
 
-// ToQueryParams converts a QueryParamsLiteral to the internal QueryParams type
 func (qpl *QueryParamsLiteral[T]) ToQueryParams() (*QueryParams[T], error) {
 	var zero T
 	modelType := reflect.TypeOf(zero)
@@ -98,7 +79,6 @@ func (qpl *QueryParamsLiteral[T]) ToQueryParams() (*QueryParams[T], error) {
 		modelType = modelType.Elem()
 	}
 
-	// Register the type
 	err := globalTypeRegistry.RegisterType(zero)
 	if err != nil {
 		return nil, err
@@ -112,7 +92,6 @@ func (qpl *QueryParamsLiteral[T]) ToQueryParams() (*QueryParams[T], error) {
 		onlyDeleted:    qpl.OnlyDeleted,
 	}
 
-	// Convert filter literal to strongly typed filter
 	if qpl.Filter != nil {
 		filter, err := qpl.Filter.ToStronglyTypedFilter(globalTypeRegistry, modelType)
 		if err != nil {
@@ -121,7 +100,6 @@ func (qpl *QueryParamsLiteral[T]) ToQueryParams() (*QueryParams[T], error) {
 		qp.filter = filter
 	}
 
-	// Convert sort literal to sort fields
 	if qpl.Sort != nil {
 		sortFields, err := qpl.Sort.ToSortFields(globalTypeRegistry, modelType)
 		if err != nil {
@@ -130,7 +108,6 @@ func (qpl *QueryParamsLiteral[T]) ToQueryParams() (*QueryParams[T], error) {
 		qp.sort = sortFields
 	}
 
-	// Set defaults
 	err = qp.PrepareDefaults()
 	if err != nil {
 		return nil, err
@@ -139,24 +116,21 @@ func (qpl *QueryParamsLiteral[T]) ToQueryParams() (*QueryParams[T], error) {
 	return qp, nil
 }
 
-// ToStronglyTypedFilter converts FilterLiteral to StronglyTypedFilter
 func (fl FilterLiteral[T]) ToStronglyTypedFilter(registry TypeRegistry, modelType reflect.Type) (StronglyTypedFilter[T], error) {
 	criteria := []domain.FilterCriteria{}
 
 	for fieldPath, value := range fl {
-		// Handle special cases for AND/OR
+
 		if fieldPath == "AND" || fieldPath == "Or" {
-			// Handle complex filters later
+
 			continue
 		}
 
-		// Validate field path
 		fieldInfo, err := registry.ValidateFieldPath(modelType, fieldPath)
 		if err != nil {
 			return nil, err
 		}
 
-		// Convert value to filter criteria
 		fieldCriteria, err := fl.convertValueToFilterCriteria(fieldPath, value, fieldInfo)
 		if err != nil {
 			return nil, err
@@ -168,7 +142,6 @@ func (fl FilterLiteral[T]) ToStronglyTypedFilter(registry TypeRegistry, modelTyp
 	return &stronglyTypedFilter[T]{criteria: criteria}, nil
 }
 
-// convertValueToFilterCriteria converts a strongly typed field value to filter criteria
 func (fl FilterLiteral[T]) convertValueToFilterCriteria(fieldPath string, value FilterLiteralValue[T], fieldInfo *FieldInfo) ([]domain.FilterCriteria, error) {
 	criteria := []domain.FilterCriteria{}
 
@@ -206,7 +179,6 @@ func (fl FilterLiteral[T]) convertValueToFilterCriteria(fieldPath string, value 
 	return criteria, nil
 }
 
-// convertStringOperatorToCriteria converts string operators to filter criteria
 func (fl FilterLiteral[T]) convertStringOperatorToCriteria(fieldPath string, op FilterOperatorLiteral[string]) []domain.FilterCriteria {
 	var criteria []domain.FilterCriteria
 
@@ -262,7 +234,6 @@ func (fl FilterLiteral[T]) convertStringOperatorToCriteria(fieldPath string, op 
 	return criteria
 }
 
-// convertIntOperatorToCriteria converts int operators to filter criteria
 func (fl FilterLiteral[T]) convertIntOperatorToCriteria(fieldPath string, op FilterOperatorLiteral[int]) []domain.FilterCriteria {
 	var criteria []domain.FilterCriteria
 
@@ -315,7 +286,6 @@ func (fl FilterLiteral[T]) convertIntOperatorToCriteria(fieldPath string, op Fil
 	return criteria
 }
 
-// convertBoolOperatorToCriteria converts bool operators to filter criteria
 func (fl FilterLiteral[T]) convertBoolOperatorToCriteria(fieldPath string, op FilterOperatorLiteral[bool]) []domain.FilterCriteria {
 	var criteria []domain.FilterCriteria
 
@@ -333,19 +303,16 @@ func (fl FilterLiteral[T]) convertBoolOperatorToCriteria(fieldPath string, op Fi
 	return criteria
 }
 
-// convertLogicalValueToCriteria converts logical operations to filter criteria
 func (fl FilterLiteral[T]) convertLogicalValueToCriteria(fieldPath string, logical FilterLogicalValue[T]) ([]domain.FilterCriteria, error) {
-	// This would need more complex handling for nested logical operations
-	// For now, return empty criteria as a placeholder
+
 	return []domain.FilterCriteria{}, nil
 }
 
-// ToSortFields converts SortLiteral to domain.SortField slice
 func (sl SortLiteral[T]) ToSortFields(registry TypeRegistry, modelType reflect.Type) ([]domain.SortField, error) {
 	var sortFields []domain.SortField
 
 	for fieldPath, direction := range sl {
-		// Validate field path
+
 		_, err := registry.ValidateFieldPath(modelType, fieldPath)
 		if err != nil {
 			return nil, err
@@ -365,96 +332,76 @@ func (sl SortLiteral[T]) ToSortFields(registry TypeRegistry, modelType reflect.T
 	return sortFields, nil
 }
 
-// NewQueryParams creates a new QueryParams from a literal structure
 func NewQueryParams[T domain.IBaseModel](literal QueryParamsLiteral[T]) (QueryParamsType[T], error) {
 	return literal.ToQueryParams()
 }
 
-// Builder provides a fluent API for building query parameters
 func Builder[T domain.IBaseModel]() QueryParamsBuilder[T] {
 	return NewQueryParamsBuilder[T](globalTypeRegistry)
 }
 
-// Filter provides a fluent API for building strongly typed filters
 func Filter[T domain.IBaseModel]() StronglyTypedFilterBuilder[T] {
 	return NewStronglyTypedFilter[T](globalTypeRegistry)
 }
 
-// RegisterType registers a type with the global type registry for type safety
 func RegisterType[T domain.IBaseModel]() error {
 	var zero T
 	return globalTypeRegistry.RegisterType(zero)
 }
 
-// GetTypeRegistry returns the global type registry
 func GetTypeRegistry() TypeRegistry {
 	return globalTypeRegistry
 }
 
-// Helper functions for creating filter operators
-
-// Eq creates an equals filter operator
 func Eq[V any](value V) FilterOperatorLiteral[V] {
 	return FilterOperatorLiteral[V]{Eq: &value}
 }
 
-// Neq creates a not equals filter operator
 func Neq[V any](value V) FilterOperatorLiteral[V] {
 	return FilterOperatorLiteral[V]{Neq: &value}
 }
 
-// Gt creates a greater than filter operator
 func Gt[V any](value V) FilterOperatorLiteral[V] {
 	return FilterOperatorLiteral[V]{Gt: &value}
 }
 
-// Gte creates a greater than or equal filter operator
 func Gte[V any](value V) FilterOperatorLiteral[V] {
 	return FilterOperatorLiteral[V]{Gte: &value}
 }
 
-// Lt creates a less than filter operator
 func Lt[V any](value V) FilterOperatorLiteral[V] {
 	return FilterOperatorLiteral[V]{Lt: &value}
 }
 
-// Lte creates a less than or equal filter operator
 func Lte[V any](value V) FilterOperatorLiteral[V] {
 	return FilterOperatorLiteral[V]{Lte: &value}
 }
 
-// Like creates a LIKE pattern filter operator (for strings)
 func Like(pattern string) FilterOperatorLiteral[string] {
 	return FilterOperatorLiteral[string]{Like: &pattern}
 }
 
-// Contains creates a contains substring filter operator (for strings)
 func Contains(substring string) FilterOperatorLiteral[string] {
 	return FilterOperatorLiteral[string]{Contains: &substring}
 }
 
-// In creates an IN filter operator
 func In[V any](values ...V) FilterOperatorLiteral[V] {
 	return FilterOperatorLiteral[V]{In: values}
 }
 
-// NotIn creates a NOT IN filter operator
 func NotIn[V any](values ...V) FilterOperatorLiteral[V] {
 	return FilterOperatorLiteral[V]{NotIn: values}
 }
 
-// Between creates a BETWEEN filter operator
 func Between[V any](start, end V) FilterOperatorLiteral[V] {
 	return FilterOperatorLiteral[V]{Between: []V{start, end}}
 }
 
-// IsNull creates an IS NULL filter operator (can be applied to any field type)
 func IsNull[V any]() FilterOperatorLiteral[V] {
 	t := true
 	return FilterOperatorLiteral[V]{IsNull: &t}
 }
 
-// IsNotNull creates an IS NOT NULL filter operator (can be applied to any field type)
 func IsNotNull[V any]() FilterOperatorLiteral[V] {
 	t := true
 	return FilterOperatorLiteral[V]{IsNotNull: &t}
