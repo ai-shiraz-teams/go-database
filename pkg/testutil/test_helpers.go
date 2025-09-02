@@ -2,35 +2,91 @@ package testutil
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
-	"github.com/ai-shiraz-teams/go-database/internal/shared/identifier"
-	"github.com/ai-shiraz-teams/go-database/internal/shared/types"
+	"github.com/ai-shiraz-teams/go-database/pkg/domain"
+	"github.com/ai-shiraz-teams/go-database/pkg/identifier"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-// TestEntity is a unified test entity for all SDK tests.
-// This replaces all duplicate MockEntity, TestEntity, FilterTestEntity across the codebase.
 type TestEntity struct {
-	types.BaseEntity
+	domain.BaseEntity
 	Name        string `gorm:"column:name" json:"name"`
 	Email       string `gorm:"column:email" json:"email"`
 	Age         int    `gorm:"column:age" json:"age"`
 	IsActive    bool   `gorm:"column:is_active" json:"is_active"`
 	Description string `gorm:"column:description" json:"description"`
 	Status      string `gorm:"column:status" json:"status"`
+
+	UserID    int          `gorm:"column:user_id" json:"userId,omitempty"`
+	User      *TestUser    `gorm:"foreignkey:UserID" json:"user,omitempty"`
+	ProfileID int          `gorm:"column:profile_id" json:"profileId,omitempty"`
+	Profile   *TestProfile `gorm:"foreignkey:ProfileID" json:"profile,omitempty"`
 }
 
-// TableName returns the table name for GORM
+type TestUser struct {
+	domain.BaseEntity
+	Username  string       `gorm:"column:username" json:"username"`
+	Email     string       `gorm:"column:email" json:"email"`
+	IsActive  bool         `gorm:"column:is_active" json:"isActive"`
+	ProfileID int          `gorm:"column:profile_id" json:"profileId,omitempty"`
+	Profile   *TestProfile `gorm:"foreignkey:ProfileID" json:"profile,omitempty"`
+}
+
+type TestProfile struct {
+	domain.BaseEntity
+	DisplayName string    `gorm:"column:display_name" json:"displayName"`
+	Bio         string    `gorm:"column:bio" json:"bio"`
+	Verified    bool      `gorm:"column:verified" json:"verified"`
+	Score       int       `gorm:"column:score" json:"score"`
+	CreatedAt   time.Time `gorm:"column:created_at" json:"createdAt"`
+}
+
+func (te *TestEntity) GetID() int {
+	return te.ID
+}
+
+func (te *TestEntity) GetCreatedAt() time.Time {
+	return te.CreatedAt
+}
+
+func (te *TestEntity) GetUpdatedAt() time.Time {
+	return te.UpdatedAt
+}
+
+func (te *TestEntity) GetDeletedAt() *time.Time {
+	if te.DeletedAt.Valid {
+		return &te.DeletedAt.Time
+	}
+	return nil
+}
+
+func (te *TestEntity) GetVersion() int {
+
+	return 0
+}
+
+func (te *TestEntity) SetVersion(version int) {
+
+}
+
 func (te *TestEntity) TableName() string {
 	return "test_entities"
 }
 
-// SetupTestDB creates a standardized in-memory SQLite database for testing.
-// This replaces all duplicate setupTestDB, setupFilterTestDB functions across the codebase.
+func (tu *TestUser) TableName() string {
+	return "test_users"
+}
+
+func (tp *TestProfile) TableName() string {
+	return "test_profiles"
+}
+
 func SetupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
@@ -41,19 +97,32 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("Failed to create test database: %v", err)
 	}
 
-	// Auto-migrate the unified test entity
-	if err := db.AutoMigrate(&TestEntity{}); err != nil {
-		t.Fatalf("Failed to migrate test entity: %v", err)
+	if err := db.AutoMigrate(&TestEntity{}, &TestUser{}, &TestProfile{}); err != nil {
+		t.Fatalf("Failed to migrate test entities: %v", err)
 	}
 
 	return db
 }
 
-// CreateTestEntities creates sample test entities for testing purposes
+func generateUniqueSlug(prefix string) string {
+	timestamp := time.Now().UnixNano()
+	return fmt.Sprintf("%s-%d", prefix, timestamp)
+}
+
+func NewTestEntity(name, status string) *TestEntity {
+	return &TestEntity{
+		BaseEntity: domain.BaseEntity{
+			Slug: generateUniqueSlug(name),
+		},
+		Name:   name,
+		Status: status,
+	}
+}
+
 func CreateTestEntities() []*TestEntity {
 	return []*TestEntity{
 		{
-			BaseEntity:  types.BaseEntity{ID: 1},
+			BaseEntity:  domain.BaseEntity{ID: 1, Slug: generateUniqueSlug("john-doe")},
 			Name:        "John Doe",
 			Email:       "john@example.com",
 			Age:         30,
@@ -62,7 +131,7 @@ func CreateTestEntities() []*TestEntity {
 			Status:      "active",
 		},
 		{
-			BaseEntity:  types.BaseEntity{ID: 2},
+			BaseEntity:  domain.BaseEntity{ID: 2, Slug: generateUniqueSlug("jane-smith")},
 			Name:        "Jane Smith",
 			Email:       "jane@example.com",
 			Age:         25,
@@ -71,7 +140,7 @@ func CreateTestEntities() []*TestEntity {
 			Status:      "inactive",
 		},
 		{
-			BaseEntity:  types.BaseEntity{ID: 3},
+			BaseEntity:  domain.BaseEntity{ID: 3, Slug: generateUniqueSlug("bob-johnson")},
 			Name:        "Bob Johnson",
 			Email:       "bob@example.com",
 			Age:         35,
@@ -82,14 +151,12 @@ func CreateTestEntities() []*TestEntity {
 	}
 }
 
-// MockUnitOfWork provides a unified mock implementation for IUnitOfWork testing.
-// This replaces all duplicate MockUnitOfWork implementations across the codebase.
 type MockUnitOfWork struct {
-	// Mock call tracking fields
 	FindAllCalled                  bool
 	FindAllWithPaginationCalled    bool
 	FindOneCalled                  bool
 	FindOneByIdCalled              bool
+	FindOneBySlugCalled            bool
 	FindOneByIdentifierCalled      bool
 	InsertCalled                   bool
 	UpdateCalled                   bool
@@ -111,12 +178,12 @@ type MockUnitOfWork struct {
 	RollbackTransactionCalled      bool
 	ResolveIDByUniqueFieldCalled   bool
 
-	// Mock return values
 	FindAllResult                  []*TestEntity
 	FindAllWithPaginationResult    []*TestEntity
 	FindAllWithPaginationCount     int64
 	FindOneResult                  *TestEntity
 	FindOneByIdResult              *TestEntity
+	FindOneBySlugResult            *TestEntity
 	FindOneByIdentifierResult      *TestEntity
 	InsertResult                   *TestEntity
 	UpdateResult                   *TestEntity
@@ -132,11 +199,11 @@ type MockUnitOfWork struct {
 	ExistsResult                   bool
 	ResolveIDByUniqueFieldResult   int
 
-	// Mock error values
 	FindAllError                  error
 	FindAllWithPaginationError    error
 	FindOneError                  error
 	FindOneByIdError              error
+	FindOneBySlugError            error
 	FindOneByIdentifierError      error
 	InsertError                   error
 	UpdateError                   error
@@ -158,7 +225,6 @@ type MockUnitOfWork struct {
 	ResolveIDByUniqueFieldError   error
 }
 
-// MockUnitOfWork method implementations
 func (m *MockUnitOfWork) FindAll(ctx context.Context) ([]*TestEntity, error) {
 	m.FindAllCalled = true
 	return m.FindAllResult, m.FindAllError
@@ -177,6 +243,11 @@ func (m *MockUnitOfWork) FindOne(ctx context.Context, filter *TestEntity) (*Test
 func (m *MockUnitOfWork) FindOneById(ctx context.Context, id int) (*TestEntity, error) {
 	m.FindOneByIdCalled = true
 	return m.FindOneByIdResult, m.FindOneByIdError
+}
+
+func (m *MockUnitOfWork) FindOneBySlug(ctx context.Context, slug string) (*TestEntity, error) {
+	m.FindOneBySlugCalled = true
+	return m.FindOneBySlugResult, m.FindOneBySlugError
 }
 
 func (m *MockUnitOfWork) FindOneByIdentifier(ctx context.Context, identifier identifier.IIdentifier) (*TestEntity, error) {
@@ -273,7 +344,7 @@ func (m *MockUnitOfWork) RollbackTransaction(ctx context.Context) {
 	m.RollbackTransactionCalled = true
 }
 
-func (m *MockUnitOfWork) ResolveIDByUniqueField(ctx context.Context, model types.IBaseModel, field string, value interface{}) (int, error) {
+func (m *MockUnitOfWork) ResolveIDByUniqueField(ctx context.Context, model domain.IBaseModel, field string, value interface{}) (int, error) {
 	m.ResolveIDByUniqueFieldCalled = true
 	return m.ResolveIDByUniqueFieldResult, m.ResolveIDByUniqueFieldError
 }
